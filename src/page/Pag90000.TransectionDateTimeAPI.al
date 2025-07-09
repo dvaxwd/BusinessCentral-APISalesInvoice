@@ -131,7 +131,7 @@ page 90000 "NDC-Transection DateTime API"
                         ItemRec.Reset();
                         ItemRec.setrange("No.", InvDetail."Item No.");
                         if not ItemRec.FindSet() then begin
-                            Error('Item No. %1 does not exist');
+                            Error('Item No. %1 does not exist', InvDetail."Item No.");
                         end;
                     until InvDetail.Next() = 0;
                 end;

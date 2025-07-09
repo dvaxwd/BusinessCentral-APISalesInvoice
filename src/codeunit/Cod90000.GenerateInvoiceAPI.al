@@ -19,6 +19,9 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         PrintDoc: Boolean;
         PrintDocVisible: Boolean;
         VATDateEnabled: Boolean;
+
+        SILForLot: Record "Sales Line";
+        ItemRequireLot: Record "Item";
     begin
         CusBillRec.Reset();
         CusBillRec.setrange("Transaction ID", TransectionRec."Transaction ID");
@@ -93,7 +96,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         SLine: Integer;
         SIL: Record "Sales Line";
         BOMComponent: Record "BOM Component";
-
+        ItemRequireLot: Record Item;
     begin
         clear(SLine);
         InvDetail.Reset();
@@ -127,6 +130,18 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 if BOMComponent.FindSet() then begin
                     CreateAsmOrder(CusBill, SIL);
                 end;
+
+                ItemRequireLot.Reset();
+                ItemRequireLot.SetRange("No.", InvDetail."Item No.");
+                if ItemRequireLot.FindSet() then begin
+                    repeat
+                        if ItemRequireLot."Item Tracking Code" <> '' then begin
+                            AssignLotNo(SIL);
+                        end;
+                    until ItemRequireLot.Next() = 0;
+                end;
+
+
             until InvDetail.Next() = 0;
         end;
 
@@ -210,4 +225,110 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
+    procedure AssignLotNo(SaleInL: Record "Sales Line")
+    var
+        ItemLedgEntry: Record "Item Ledger Entry";
+        ResrvEntry: Record "Reservation Entry";
+        EntrySummary: Record "Entry Summary" temporary;
+
+        QtyToAssign: Decimal;
+        QtyFromThisLot: Decimal;
+        LastReservEntryNo: Integer;
+    begin
+        QtyToAssign := SaleInL."Quantity (Base)";
+        EntrySummary.DeleteAll();
+        // ***** Filter Item Ledger Entry: หาล็อตที่ยังเหลือในสต๊อก ไปใส่ใน Entry Summary เพื่อหา lot ที่ใช้ได้*****
+        ItemLedgEntry.SetCurrentKey("Item No.", "Open", "Location Code", "Lot No.");
+        ItemLedgEntry.SetRange("Item No.", SaleInL."No.");
+        ItemLedgEntry.SetRange("Open", true);
+        ItemLedgEntry.SetRange("Location Code", SaleInL."Location Code");
+        ItemLedgEntry.SetFilter("Lot No.", '<>%1', '');
+        if ItemLedgEntry.FindSet() then begin
+            repeat
+                EntrySummary.Init();
+                EntrySummary."Entry No." := ItemLedgEntry."Entry No.";
+                EntrySummary."Lot No." := ItemLedgEntry."Lot No.";
+                EntrySummary."Total Quantity" := ItemLedgEntry.Quantity;
+                EntrySummary."Expiration Date" := ItemLedgEntry."Expiration Date";
+                EntrySummary."Total Available Quantity" := ItemLedgEntry."Remaining Quantity";
+                EntrySummary.Insert();
+            until ItemLedgEntry.Next() = 0;
+        end else begin
+            Log('AssignLotNo Warning', 'No available lots found for Item ' + SaleInL."No.");
+        end;
+
+        // ***** Find Last Entry No. *****
+        if ResrvEntry.FindLast() then
+            LastReservEntryNo := ResrvEntry."Entry No."
+        else
+            LastReservEntryNo := 0;
+
+        // ***** Loop EntrySummary ที่เก็บ lot ที่สามารถใช้ได้ เพื่อทำการ Insert ข้อมูลไปยัง Reservation Entry *****
+        if EntrySummary.FindSet() then begin
+            repeat
+                if QtyToAssign <= 0 then break;
+
+                // ****** Assign จำนวนที่จะหยิบจาก Lot ปัจจุบัน *****
+                if EntrySummary."Total Available Quantity" >= QtyToAssign then begin
+                    QtyFromThisLot := QtyToAssign
+                end else begin
+                    QtyFromThisLot := EntrySummary."Total Available Quantity";
+                end;
+
+                // ***** ถ้าหยิบจาก Lot ปัจจุบัน *****
+                if QtyFromThisLot > 0 then begin
+                    LastReservEntryNo += 1;
+
+                    // --- ขา Demand (ฝั่ง Sales Line / -ve Qty) ---
+                    ResrvEntry.Init();
+                    ResrvEntry."Entry No." := LastReservEntryNo;
+                    ResrvEntry.Positive := false;
+                    ResrvEntry."Item No." := SaleInL."No.";
+                    ResrvEntry."Variant Code" := SaleInL."Variant Code";
+                    ResrvEntry."Location Code" := SaleInL."Location Code";
+                    ResrvEntry.Validate("Quantity (Base)", -QtyFromThisLot);
+                    ResrvEntry."Source Type" := DATABASE::"Sales Line";
+                    ResrvEntry."Source Subtype" := SaleInL."Document Type".AsInteger();
+                    ResrvEntry."Source ID" := SaleInL."Document No.";
+                    ResrvEntry."Source Ref. No." := SaleInL."Line No.";
+                    ResrvEntry.Validate("Lot No.", EntrySummary."Lot No.");
+                    ResrvEntry."Reservation Status" := ResrvEntry."Reservation Status"::Reservation;
+                    ResrvEntry."Creation Date" := WorkDate();
+                    ResrvEntry."Shipment Date" := SaleInL."Shipment Date";
+                    ResrvEntry.Insert(true);
+
+                    // --- ขา Supply (ฝั่ง ILE / +ve Qty) ---
+                    ResrvEntry.Init();
+                    ResrvEntry."Entry No." := LastReservEntryNo; // ต้องใช้เลขเดียวกัน
+                    ResrvEntry.Positive := true;
+                    ResrvEntry."Item No." := SaleInL."No.";
+                    ResrvEntry."Variant Code" := SaleInL."Variant Code";
+                    ResrvEntry."Location Code" := SaleInL."Location Code";
+                    ResrvEntry.Validate("Quantity (Base)", QtyFromThisLot);
+                    ResrvEntry."Source Type" := DATABASE::"Item Ledger Entry";
+                    ResrvEntry."Source ID" := '';
+                    ResrvEntry."Source Ref. No." := EntrySummary."Entry No."; // ชี้ไปที่ ILE
+                    ResrvEntry.Validate("Lot No.", EntrySummary."Lot No.");
+                    ResrvEntry."Expiration Date" := EntrySummary."Expiration Date";
+                    ResrvEntry."Reservation Status" := ResrvEntry."Reservation Status"::Reservation;
+                    ResrvEntry."Creation Date" := WorkDate();
+                    ResrvEntry.Insert(true);
+                end;
+
+                QtyToAssign -= QtyFromThisLot;
+            until EntrySummary.Next() = 0;
+        end;
+    end;
+
+    local procedure Log(Tag: Text[50]; Message: Text[250])
+    var
+        APILog: Record "NDC-API Log";
+    begin
+        APILog.Init();
+        APILog."LOGTimestamp" := CurrentDateTime();
+        APILog.Tag := Tag;
+        APILog.Message := Message;
+        APILog.Insert();
+        Commit();
+    end;
 }
