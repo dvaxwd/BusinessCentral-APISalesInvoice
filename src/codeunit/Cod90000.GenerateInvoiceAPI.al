@@ -254,7 +254,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 EntrySummary.Insert();
             until ItemLedgEntry.Next() = 0;
         end else begin
-            Log('AssignLotNo Warning', 'No available lots found for Item ' + SaleInL."No.");
+            
         end;
 
         // ***** Find Last Entry No. *****
@@ -322,13 +322,13 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
 
     local procedure Log(Tag: Text[50]; Message: Text[250])
     var
-        APILog: Record "NDC-API Log";
+        // APILog: Record "NDC-API Log";
     begin
-        APILog.Init();
-        APILog."LOGTimestamp" := CurrentDateTime();
-        APILog.Tag := Tag;
-        APILog.Message := Message;
-        APILog.Insert();
-        Commit();
+        // APILog.Init();
+        // APILog."LOGTimestamp" := CurrentDateTime();
+        // APILog.Tag := Tag;
+        // APILog.Message := Message;
+        // APILog.Insert();
+        // Commit();
     end;
 }
