@@ -254,7 +254,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 EntrySummary.Insert();
             until ItemLedgEntry.Next() = 0;
         end else begin
-            Log('AssignLotNo Warning', 'No available lots found for Item ' + SaleInL."No.");
+            
         end;
 
         // ***** Find Last Entry No. *****
@@ -320,15 +320,20 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
-    local procedure Log(Tag: Text[50]; Message: Text[250])
+    local procedure Log(SINo: Code[20]; SICusNo: Code[20]; SICusName: Text[250]; SILoCode: Code[20]; SILoName: Text[250]; SIStatus: Enum "NDC-PostStatus";SIErrMes: Text[250]; SIDate: DateTime; TranID: Code[20])
     var
-        APILog: Record "NDC-API Log";
+        SIPLog: Record "NDC-SalesInvoicesPostLog";
     begin
-        APILog.Init();
-        APILog."LOGTimestamp" := CurrentDateTime();
-        APILog.Tag := Tag;
-        APILog.Message := Message;
-        APILog.Insert();
-        Commit();
+        SIPLog.init();
+        SIPLog."Invoice No." := SINo;
+        SIPLog."Customer No." := SICusNo;
+        SIPLog."Customer Name" := SICusName;
+        SIPLog."Location Code" := SILoCode;
+        SIPLog."Location Name" := SILoName;
+        SIPLog."Post Status" := SIStatus;
+        SIPLog."Error Message" := SIErrMes;
+        SIPLog."Post Attempt DateTime" := SIDate;
+        SIPLog."Transaction ID" := TranID;
+        SIPLog.Insert();
     end;
 }
