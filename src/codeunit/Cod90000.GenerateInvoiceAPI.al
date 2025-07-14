@@ -1,5 +1,8 @@
 codeunit 90000 "NDC-GenerateInvoiceAPI"
 {
+    var
+        LastPostErrText: Text[250];
+
     procedure ProcessToCreateInv(TransectionRec: Record "NDC-Transaction DateTime")
     var
         CusBillRec: Record "NDC-API Customer Bills";
@@ -10,6 +13,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         APISetup: Record "NDC-API Global Setup";
         SalesBatchPostMgt: Codeunit "Sales Batch Post Mgt.";
         SHtoPost: Record "Sales Header";
+        SingleSHtoPost: Record "Sales Header";
         SalesReceivablesSetup: Record "Sales & Receivables Setup";
 
         PostingDateReq, VATDateReq : Date;
@@ -136,7 +140,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 if ItemRequireLot.FindSet() then begin
                     repeat
                         if ItemRequireLot."Item Tracking Code" <> '' then begin
-                            AssignLotNo(SIL);
+                            AssignLotNo(SIL, InvDetail."Transaction ID");
                         end;
                     until ItemRequireLot.Next() = 0;
                 end;
@@ -225,7 +229,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
-    procedure AssignLotNo(SaleInL: Record "Sales Line")
+    procedure AssignLotNo(SaleInL: Record "Sales Line"; TranID: Guid)
     var
         ItemLedgEntry: Record "Item Ledger Entry";
         ResrvEntry: Record "Reservation Entry";
@@ -254,7 +258,11 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 EntrySummary.Insert();
             until ItemLedgEntry.Next() = 0;
         end else begin
-            
+            Log(SaleInL."Document No.", Enum::"NDC-PostStatus"::Fail,
+                StrSubstNo(
+                    'No available lot found in location: Item=%1, Location=%2',
+                    SaleInL."No.", SaleInL."Location Code"),
+                CurrentDateTime(), TranID);
         end;
 
         // ***** Find Last Entry No. *****
@@ -318,18 +326,23 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 QtyToAssign -= QtyFromThisLot;
             until EntrySummary.Next() = 0;
         end;
+
+        // ***** Check if not all quantity was assigned *****
+        if QtyToAssign > 0 then begin
+            Log(SaleInL."Document No.", Enum::"NDC-PostStatus"::Fail,
+                StrSubstNo(
+                    'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
+                    SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No."),
+                CurrentDateTime(), TranID);
+        end;
     end;
 
-    local procedure Log(SINo: Code[20]; SICusNo: Code[20]; SICusName: Text[250]; SILoCode: Code[20]; SILoName: Text[250]; SIStatus: Enum "NDC-PostStatus";SIErrMes: Text[250]; SIDate: DateTime; TranID: Code[20])
+    local procedure Log(SINo: Code[20]; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; SIDate: DateTime; TranID: Guid)
     var
         SIPLog: Record "NDC-SalesInvoicesPostLog";
     begin
         SIPLog.init();
         SIPLog."Invoice No." := SINo;
-        SIPLog."Customer No." := SICusNo;
-        SIPLog."Customer Name" := SICusName;
-        SIPLog."Location Code" := SILoCode;
-        SIPLog."Location Name" := SILoName;
         SIPLog."Post Status" := SIStatus;
         SIPLog."Error Message" := SIErrMes;
         SIPLog."Post Attempt DateTime" := SIDate;

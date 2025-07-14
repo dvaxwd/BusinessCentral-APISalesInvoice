@@ -21,7 +21,7 @@ table 90007 "NDC-SalesInvoicesPostLog"{
             Caption = 'Error Message';
         }field(9; "Post Attempt DateTime"; DateTime){
             Caption = 'Post Attempt Date/Time';
-        }field(10; "Transaction ID"; Code[20]){
+        }field(10; "Transaction ID"; Guid){
             Caption = 'Transaction ID';
         }
     }
