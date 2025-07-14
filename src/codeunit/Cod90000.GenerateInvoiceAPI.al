@@ -140,7 +140,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 if ItemRequireLot.FindSet() then begin
                     repeat
                         if ItemRequireLot."Item Tracking Code" <> '' then begin
-                            AssignLotNo(SIL, InvDetail."Transaction ID");
+                            AssignLotNo(SIL, SIH);
                         end;
                     until ItemRequireLot.Next() = 0;
                 end;
@@ -229,7 +229,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
-    procedure AssignLotNo(SaleInL: Record "Sales Line"; TranID: Guid)
+    procedure AssignLotNo(SaleInL: Record "Sales Line"; SaleH: Record "Sales Header")
     var
         ItemLedgEntry: Record "Item Ledger Entry";
         ResrvEntry: Record "Reservation Entry";
@@ -262,7 +262,8 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 StrSubstNo(
                     'No available lot found in location: Item=%1, Location=%2',
                     SaleInL."No.", SaleInL."Location Code"),
-                CurrentDateTime(), TranID);
+                CurrentDateTime(), SaleH);
+            exit;
         end;
 
         // ***** Find Last Entry No. *****
@@ -333,20 +334,28 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 StrSubstNo(
                     'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
                     SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No."),
-                CurrentDateTime(), TranID);
+                CurrentDateTime(), SaleH);
         end;
     end;
 
-    local procedure Log(SINo: Code[20]; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; SIDate: DateTime; TranID: Guid)
+    local procedure Log(SINo: Code[20]; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; SIDate: DateTime; SaleH: Record "Sales Header")
     var
         SIPLog: Record "NDC-SalesInvoicesPostLog";
+        Location: Record "Location";
     begin
         SIPLog.init();
         SIPLog."Invoice No." := SINo;
+        SIPLog."Customer No." := SaleH."Sell-to Customer No.";
+        SIPLog."Customer Name" := SaleH."Sell-to Customer Name";
+        SIPLog."Location Code" := SaleH."Location Code";
+        Location.SetRange(Code,SaleH."Location Code");
+        if Location.FindFirst() then begin
+            SIPLog."Location Name" := Location.Name;
+        end;
         SIPLog."Post Status" := SIStatus;
         SIPLog."Error Message" := SIErrMes;
         SIPLog."Post Attempt DateTime" := SIDate;
-        SIPLog."Transaction ID" := TranID;
+        SIPLog."Transaction ID" := SaleH."NDC-Ref. Guid";
         SIPLog.Insert();
     end;
 }
