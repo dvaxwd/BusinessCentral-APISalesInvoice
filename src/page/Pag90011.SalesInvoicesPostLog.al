@@ -21,7 +21,7 @@ page 90011 "NDC-SalesInvoicesPostLog"
                 {
                     Caption = 'Invoice No.';
                     ApplicationArea = All;
-                    DrillDownPageId = "Sales Invoice";
+                    //DrillDownPageId = "Sales Invoice";
                 }
                 field("CustomerNo."; Rec."Customer No.")
                 {
@@ -47,11 +47,12 @@ page 90011 "NDC-SalesInvoicesPostLog"
                 {
                     Caption = 'Post Status';
                     ApplicationArea = All;
+                    Style = Strong;
                     StyleExpr = PostStatusStyleText;
                 }
                 field(ErrorMessage; Rec."Error Message")
                 {
-                    Caption = 'Reason for Posting Failure';
+                    Caption = 'Description';
                     ApplicationArea = All;
                 }
                 field(PostAttemptDateTime; Rec."Post Attempt DateTime")
@@ -67,12 +68,53 @@ page 90011 "NDC-SalesInvoicesPostLog"
             }
         }
     }
+    actions
+    {
+        area(Promoted)
+        {
+            group(ActionPromote)
+            {
+                Caption = 'Action';
+                actionref(GoTodefPromote; Gotodef) { }
+            }
+        }
+        area(Processing)
+        {
+            group(ActionProcess)
+            {
+                action(GoToDef)
+                {
+                    Caption = 'Open Sale Invoice';
+                    Image = View;
+                    Visible = Rec."Post Status" = Enum::"NDC-PostStatus"::Fail;
+                    trigger OnAction()
+                    var
+                        SalesInvoiceRec: Record "Sales Header";
+                    begin
+                        SalesInvoiceRec.SetRange("No.", Rec."Invoice No.");
+                        SalesInvoiceRec.SetRange("Document Type", SalesInvoiceRec."Document Type"::Invoice);
+                        if SalesInvoiceRec.FindFirst() then
+                            PAGE.Run(PAGE::"Sales Invoice", SalesInvoiceRec);
+                    end;
+                }
+            }
+        }
+    }
 
     trigger OnAfterGetRecord()
     begin
+        UpdateLog();
+        Poststyle();
+    end;
+
+    var
+        PostStatusStyleText: Text;
+
+    local procedure Poststyle()
+    begin
         case Rec."Post Status" of
             "NDC-PostStatus"::Fail:
-                PostStatusStyleText := 'Attention';  // แดง
+                PostStatusStyleText := 'Unfavorable';  // แดง
             "NDC-PostStatus"::Success:
                 PostStatusStyleText := 'Favorable';  // เขียว
             else
@@ -80,18 +122,27 @@ page 90011 "NDC-SalesInvoicesPostLog"
         end;
     end;
 
-    local procedure GetPostStatusStyle(): Text
-    begin
-        case Rec."Post Status" of
-            "NDC-PostStatus"::Fail:
-                exit('Attention');     // สีแดง
-            "NDC-PostStatus"::Success:
-                exit('Favorable');     // สีเขียว
-            else
-                exit('');
-        end;
-    end;
-
+    local procedure UpdateLog()
     var
-        PostStatusStyleText: Text;
+        Log: Record "NDC-SalesInvoicesPostLog";
+        SaleH: Record "Sales Header";
+    begin
+        Log.SetRange("Post Status", Enum::"NDC-PostStatus"::Fail);
+        if Log.FindSet() then
+            repeat
+                SaleH.Reset();
+                SaleH.SetRange("No.", Log."Invoice No.");
+                if SaleH.FindFirst() then begin
+                    if SaleH."Sell-to Customer No." <> Log."Customer No." then begin
+                        Log."Post Status" := Enum::"NDC-PostStatus"::Success;
+                        Log."Error Message" := 'Sales Invoice found but customer does not match. Possibly modified or posted.';
+                        Log.Modify();
+                    end;
+                end else begin
+                    Log."Post Status" := Enum::"NDC-PostStatus"::Success;
+                    Log."Error Message" := 'Sales Invoice not found. Possibly posted or deleted.';
+                    Log.Modify();
+                end;
+            until Log.Next() = 0;
+    end;
 }
