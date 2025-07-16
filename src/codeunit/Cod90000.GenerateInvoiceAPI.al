@@ -364,6 +364,107 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
+    procedure AssignSerialNo(SaleH: Record "Sales Header"; SaleInL: Record "Sales Line"; SerialNo: Code[50])
+        var
+            ItemLedgEntry: Record "Item Ledger Entry";
+            ResvEntry: Record "Reservation Entry";
+
+            QtyToAssign: Decimal;
+            LastResvEntryNo: Integer;
+        begin
+            QtyToAssign := SaleInL."Quantity (Base)";
+            ItemLedgEntry.SetCurrentKey("Item No.", "Open", "Location Code", "Lot No.");
+            ItemLedgEntry.SetRange("Item No.", SaleInL."No.");
+            ItemLedgEntry.SetRange("Open", true);
+            ItemLedgEntry.SetRange("Location Code", SaleInL."Location Code");
+            if ItemLedgEntry.FindSet() then begin
+                repeat
+                    if QtyToAssign <= 0 then break;
+                    if ItemLedgEntry."Serial No." = SerialNo then begin
+                        // --- ขา Demand (ฝั่ง Sales Line / -ve Qty) ---
+                        ResvEntry.Init();
+                        ResvEntry."Entry No." := LastResvEntryNo();
+                        ResvEntry.Positive := false;
+                        ResvEntry."Item No." := SaleInL."No.";
+                        ResvEntry."Variant Code" := SaleInL."Variant Code";
+                        ResvEntry."Location Code" := SaleInL."Location Code";
+                        ResvEntry.Validate("Quantity (Base)", 1);
+                        ResvEntry."Source Type" := DATABASE::"Sales Line";
+                        ResvEntry."Source Subtype" := SaleInL."Document Type".AsInteger();
+                        ResvEntry."Source ID" := SaleInL."Document No.";
+                        ResvEntry."Source Ref. No." := SaleInL."Line No.";
+                        ResvEntry."Reservation Status" := ResvEntry."Reservation Status"::Reservation;
+                        ResvEntry."Creation Date" := WorkDate();
+                        ResvEntry."Shipment Date" := SaleInL."Shipment Date";
+                        ResvEntry.Insert(true);
+
+                        // --- ขา Supply (ฝั่ง ILE / +ve Qty) ---
+                        ResvEntry.Init();
+                        ResvEntry."Entry No." := LastResvEntryNo();
+                        ResvEntry.Positive := true;
+                        ResvEntry."Item No." := SaleInL."No.";
+                        ResvEntry."Variant Code" := SaleInL."Variant Code";
+                        ResvEntry."Location Code" := SaleInL."Location Code";
+                        ResvEntry.Validate("Quantity (Base)", -1);
+                        ResvEntry."Source Type" := DATABASE::"Item Ledger Entry";
+                        ResvEntry."Source ID" := '';
+                        ResvEntry."Source Ref. No." := ItemLedgEntry."Entry No."; // ชี้ไปที่ ILE
+                        ResvEntry.Validate("Lot No.", ItemLedgEntry."Lot No.");
+                        ResvEntry."Expiration Date" := ItemLedgEntry."Expiration Date";
+                        ResvEntry."Reservation Status" := ResvEntry."Reservation Status"::Reservation;
+                        ResvEntry."Creation Date" := WorkDate();
+                        ResvEntry.Insert(true);
+                    end else begin
+                        // if not FailPostDict.ContainsKey(SaleH."No.") then begin
+                        //     FailPostDict.Add(
+                        //         SaleH."No.",
+                        //         StrSubstNo(
+                        //             'Not found Serial No. : Item=%1, Location=%2, SerialNo=%3',
+                        //             SaleInL."No.",SaleInL."Location Code",SerialNo
+                        //         ));
+                        // end else begin
+                        //     FailPostDict.Set(
+                        //         SaleH."No.",
+                        //         StrSubstNo(
+                        //             'Not found Serial No. : Item=%1, Location=%2, SerialNo=%3',
+                        //             SaleInL."No.",SaleInL."Location Code",SerialNo 
+                        //         )
+                        //     );
+                        // end;
+                    end;
+                    QtyToAssign -= 1;
+                    if QtyToAssign <= 0 then exit;
+                until ItemLedgEntry.Next() = 0;
+            end else begin
+                if not FailPostDict.ContainsKey(SaleH."No.") then begin
+                    FailPostDict.Add(
+                        SaleH."No.",
+                        StrSubstNo(
+                            'No available lot found in location: Item=%1, Location=%2',
+                            SaleInL."No.",SaleInL."Location Code"));
+                end else begin
+                    FailPostDict.Set(
+                        SaleH."No.",
+                        StrSubstNo(
+                            'No available lot found in location: Item=%1, Location=%2',
+                            SaleInL."No.",SaleInL."Location Code")
+                    );
+                end;
+            end;
+        end;
+    
+    local procedure LastResvEntryNo(): Integer
+        var
+            ResvEntry: Record "Reservation Entry";
+            LastEntryNo: Integer;
+        begin
+            Clear(ResvEntry);
+            if ResvEntry.FindLast() then
+                exit(ResvEntry."Entry No." + 1)
+            else
+                exit(1);
+        end;
+    
     local procedure Log(SaleH: Record "Sales Header"; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; SIDate: DateTime)
     var
         SIPLog: Record "NDC-SalesInvoicesPostLog";
