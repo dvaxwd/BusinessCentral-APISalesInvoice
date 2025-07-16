@@ -75,18 +75,21 @@ page 90011 "NDC-SalesInvoicesPostLog"
             group(ActionPromote)
             {
                 Caption = 'Action';
-                actionref(GoTodefPromote; Gotodef) { }
+                actionref(GoToSalePromote; GoToSale) { }
+                actionref(GoToPostSalePromote; GoToPostSale){}
             }
         }
         area(Processing)
         {
             group(ActionProcess)
             {
-                action(GoToDef)
+                action(GoToSale)
                 {
                     Caption = 'Open Sale Invoice';
                     Image = View;
-                    Visible = Rec."Post Status" = Enum::"NDC-PostStatus"::Fail;
+                    //Visible = Rec."Post Status" = Enum::"NDC-PostStatus"::Fail;
+                    ApplicationArea = All;
+                    Enabled = Rec."Post Status" = Enum::"NDC-PostStatus"::Fail;
                     trigger OnAction()
                     var
                         SalesInvoiceRec: Record "Sales Header";
@@ -96,6 +99,20 @@ page 90011 "NDC-SalesInvoicesPostLog"
                         if SalesInvoiceRec.FindFirst() then
                             PAGE.Run(PAGE::"Sales Invoice", SalesInvoiceRec);
                     end;
+                }
+                action(GoToPostSale){
+                    Caption = 'Open Posted Sale Invoice';
+                    ApplicationArea = All;
+                    Enabled = Rec."Post Status" = Enum::"NDC-PostStatus"::Success;
+                    trigger OnAction()
+                        var
+                            PostSaleInvoice: Record "Sales Invoice Header";
+                        begin
+                            PostSaleInvoice.SetRange("NDC-Ref. Guid",Rec."Transaction ID");
+                            PostSaleInvoice.SetRange("Pre-Assigned No.",Rec."Invoice No.");
+                            if PostSaleInvoice.FindFirst() then
+                                Page.Run(Page::"Posted Sales Invoice",PostSaleInvoice);
+                        end;
                 }
             }
         }
@@ -114,9 +131,9 @@ page 90011 "NDC-SalesInvoicesPostLog"
     begin
         case Rec."Post Status" of
             "NDC-PostStatus"::Fail:
-                PostStatusStyleText := 'Unfavorable';  // แดง
+                PostStatusStyleText := 'Unfavorable';
             "NDC-PostStatus"::Success:
-                PostStatusStyleText := 'Favorable';  // เขียว
+                PostStatusStyleText := 'Favorable';
             else
                 PostStatusStyleText := '';
         end;
