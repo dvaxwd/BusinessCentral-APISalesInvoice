@@ -261,17 +261,13 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         var
             ItemLedgEntry: Record "Item Ledger Entry";
             ResrvEntry: Record "Reservation Entry";
-            EntrySummary: Record "Entry Summary" temporary;
 
             QtyToAssign: Decimal;
             QtyFromThisLot: Decimal;
-            LastEntryNo: Integer;
         begin
             QtyToAssign := SaleInL."Quantity (Base)";
-            LastEntryNo := LastResvEntryNo();
-            EntrySummary.DeleteAll();
 
-            // --- Filter Item Ledger Entry to find open lots and insert them into Entry Summary ---
+            // --- Filter Item Ledger Entry to find open lots and create reservations ---
             ItemLedgEntry.SetCurrentKey("Item No.", "Open", "Location Code", "Lot No.");
             ItemLedgEntry.SetRange("Item No.", SaleInL."No.");
             ItemLedgEntry.SetRange("Open", true);
@@ -279,82 +275,36 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             ItemLedgEntry.SetFilter("Lot No.", '<>%1', '');
             if ItemLedgEntry.FindSet() then begin
                 repeat
-                    EntrySummary.Init();
-                    EntrySummary."Entry No." := ItemLedgEntry."Entry No.";
-                    EntrySummary."Lot No." := ItemLedgEntry."Lot No.";
-                    EntrySummary."Total Quantity" := ItemLedgEntry.Quantity;
-                    EntrySummary."Expiration Date" := ItemLedgEntry."Expiration Date";
-                    EntrySummary."Total Available Quantity" := ItemLedgEntry."Remaining Quantity";
-                    EntrySummary.Insert();
+                    if QtyToAssign <= 0 then break;
+
+                    // --- Assign quantity from the current lot ---
+                    if ItemLedgEntry."Remaining Quantity" >= QtyToAssign then begin
+                        QtyFromThisLot := QtyToAssign
+                    end else begin
+                        QtyFromThisLot := ItemLedgEntry."Remaining Quantity";
+                    end;
+
+                    // --- If select form current lot ---
+                    if QtyFromThisLot > 0 then begin
+                        CreateReservation(ItemLedgEntry,SaleInL,QtyFromThisLot);
+                    end;
+
+                    QtyToAssign -= QtyFromThisLot;
                 until ItemLedgEntry.Next() = 0;
+                
+                // --- Check if not all quantity was assigned ---
+                if QtyToAssign > 0 then begin
+                    FailPostDictManagement(
+                        SaleInL."Document No.",
+                        StrSubstNo(
+                            'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
+                            SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No."));
+                end;
             end else begin
                 FailPostDictManagement(SaleInL."Document No.",
                     StrSubstNo(
                         'No available lot found in location: Item=%1, Location=%2',
                         SaleInL."No.",SaleInL."Location Code"));
-            end;
-
-            // --- Loop EntrySummary to assign usable lots and create reservations ---
-            if EntrySummary.FindSet() then begin
-                repeat
-                    if QtyToAssign <= 0 then break;
-
-                    // --- Assign quantity from the current lot ---
-                    if EntrySummary."Total Available Quantity" >= QtyToAssign then begin
-                        QtyFromThisLot := QtyToAssign
-                    end else begin
-                        QtyFromThisLot := EntrySummary."Total Available Quantity";
-                    end;
-
-                    // --- if select form current lot ---
-                    if QtyFromThisLot > 0 then begin
-                        // --- Demand Side(Sales Line || Negative Qty) ---
-                        ResrvEntry.Init();
-                        ResrvEntry."Entry No." := LastEntryNo;
-                        ResrvEntry.Positive := false;
-                        ResrvEntry."Item No." := SaleInL."No.";
-                        ResrvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResrvEntry."Location Code" := SaleInL."Location Code";
-                        ResrvEntry.Validate("Quantity (Base)", -QtyFromThisLot);
-                        ResrvEntry."Source Type" := DATABASE::"Sales Line";
-                        ResrvEntry."Source Subtype" := SaleInL."Document Type".AsInteger();
-                        ResrvEntry."Source ID" := SaleInL."Document No.";
-                        ResrvEntry."Source Ref. No." := SaleInL."Line No.";
-                        ResrvEntry.Validate("Lot No.", EntrySummary."Lot No.");
-                        ResrvEntry."Reservation Status" := ResrvEntry."Reservation Status"::Reservation;
-                        ResrvEntry."Creation Date" := WorkDate();
-                        ResrvEntry."Shipment Date" := SaleInL."Shipment Date";
-                        ResrvEntry.Insert(true);
-
-                        // --- Supply Side(Item Ledger Entry || Positive Qty) ---
-                        ResrvEntry.Init();
-                        ResrvEntry."Entry No." := LastEntryNo;
-                        ResrvEntry.Positive := true;
-                        ResrvEntry."Item No." := SaleInL."No.";
-                        ResrvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResrvEntry."Location Code" := SaleInL."Location Code";
-                        ResrvEntry.Validate("Quantity (Base)", QtyFromThisLot);
-                        ResrvEntry."Source Type" := DATABASE::"Item Ledger Entry";
-                        ResrvEntry."Source ID" := '';
-                        ResrvEntry."Source Ref. No." := EntrySummary."Entry No.";
-                        ResrvEntry.Validate("Lot No.", EntrySummary."Lot No.");
-                        ResrvEntry."Expiration Date" := EntrySummary."Expiration Date";
-                        ResrvEntry."Reservation Status" := ResrvEntry."Reservation Status"::Reservation;
-                        ResrvEntry."Creation Date" := WorkDate();
-                        ResrvEntry.Insert(true);
-                    end;
-
-                    QtyToAssign -= QtyFromThisLot;
-                until EntrySummary.Next() = 0;
-            end;
-
-            // --- Check if not all quantity was assigned ---
-            if QtyToAssign > 0 then begin
-                FailPostDictManagement(
-                    SaleInL."Document No.",
-                    StrSubstNo(
-                        'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
-                        SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No."));
             end;
         end;
 
@@ -365,11 +315,9 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             ResvEntry: Record "Reservation Entry";
 
             QtyToAssign: Decimal;
-            LastEntryNo: Integer;
             ILEMatch: Boolean;
         begin
             ILEMatch := false;
-            LastEntryNo := LastResvEntryNo();
             QtyToAssign := SaleInL."Quantity (Base)";
 
             // --- Filter Item Ledger Entry ---
@@ -382,40 +330,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                     if QtyToAssign <= 0 then break;
                     if ItemLedgEntry."Serial No." = SerialNo then begin
                         ILEMatch := true;
-
-                        // --- Demand Side(Sales Line || Negative Qty) ---
-                        ResvEntry.Init();
-                        ResvEntry."Entry No." := LastEntryNo;
-                        ResvEntry.Positive := false;
-                        ResvEntry."Item No." := SaleInL."No.";
-                        ResvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResvEntry."Location Code" := SaleInL."Location Code";
-                        ResvEntry.Validate("Quantity (Base)", -1);
-                        ResvEntry."Source Type" := DATABASE::"Sales Line";
-                        ResvEntry."Source Subtype" := SaleInL."Document Type".AsInteger();
-                        ResvEntry."Source ID" := SaleInL."Document No.";
-                        ResvEntry."Source Ref. No." := SaleInL."Line No.";
-                        ResvEntry."Reservation Status" := ResvEntry."Reservation Status"::Reservation;
-                        ResvEntry."Creation Date" := WorkDate();
-                        ResvEntry."Shipment Date" := SaleInL."Shipment Date";
-                        ResvEntry.Insert(true);
-
-                        // --- Supply Side(Item Ledger Entry || Positive Qty) ---
-                        ResvEntry.Init();
-                        ResvEntry."Entry No." := LastEntryNo;
-                        ResvEntry.Positive := true;
-                        ResvEntry."Item No." := SaleInL."No.";
-                        ResvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResvEntry."Location Code" := SaleInL."Location Code";
-                        ResvEntry.Validate("Quantity (Base)", 1);
-                        ResvEntry."Source Type" := DATABASE::"Item Ledger Entry";
-                        ResvEntry."Source ID" := '';
-                        ResvEntry."Source Ref. No." := ItemLedgEntry."Entry No.";
-                        ResvEntry."Expiration Date" := ItemLedgEntry."Expiration Date";
-                        ResvEntry."Reservation Status" := ResvEntry."Reservation Status"::Reservation;
-                        ResvEntry."Creation Date" := WorkDate();
-                        ResvEntry.Insert(true);
-                        
+                        CreateReservation(ItemLedgEntry,SaleInL,1);
                         QtyToAssign -= 1;
                     end;
                     if QtyToAssign <= 0 then exit;
@@ -430,6 +345,48 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                     StrSubstNo('No available stock found in location : Item=%1, Location=%2',
                     SaleInL."No.",SaleInL."Location Code"));
             end;
+        end;
+    
+    // ***** This procedure is used to create reservation.Demand side and supply side *****
+    local procedure CreateReservation(ItemLedgEntry: Record "Item Ledger Entry"; SaleInL: Record "Sales Line"; Quantity: Decimal)
+        var
+            Resrv: Record "Reservation Entry";
+            LastEntryNo: Integer;
+        begin
+            LastEntryNo := LastResvEntryNo();
+
+            // --- Demand Side(Sales Line || Negative Qty) ---
+            Resrv.Init();
+            Resrv."Entry No." := LastEntryNo;
+            Resrv.Positive := false;
+            Resrv."Item No." := SaleInL."No.";
+            Resrv."Variant Code" := SaleInL."Variant Code";
+            Resrv."Location Code" := SaleInL."Location Code";
+            Resrv.Validate("Quantity (Base)",-Quantity);
+            Resrv."Source Type" := Database::"Sales Line";
+            Resrv."Source Subtype" := SaleInL."Document Type".AsInteger();
+            Resrv."Source ID" := SaleInL."Document No.";
+            Resrv."Source Ref. No." := SaleInL."Line No.";
+            Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
+            Resrv."Creation Date" := WorkDate();
+            Resrv."Shipment Date" := SaleInL."Shipment Date";
+            Resrv.Insert(true);
+
+            // --- Supply Side(Item Ledger Entry || Positive Qty) ---
+            Resrv.Init();
+            Resrv."Entry No." := LastEntryNo;
+            Resrv.Positive := true;
+            Resrv."Item No." := SaleInL."No.";
+            Resrv."Variant Code" := SaleInL."Variant Code";
+            Resrv."Location Code" := SaleInL."Location Code";
+            Resrv.Validate("Quantity (Base)",Quantity);
+            Resrv."Source Type" := Database::"Item Ledger Entry";
+            Resrv."Source ID" := '';
+            Resrv."Source Ref. No." := ItemLedgEntry."Entry No.";
+            Resrv."Expiration Date" := ItemLedgEntry."Expiration Date";
+            Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
+            Resrv."Creation Date" := WorkDate();
+            Resrv.Insert(true);
         end;
     
     // ***** This procedure adds or updates an entry in the FailPostDict. *****
