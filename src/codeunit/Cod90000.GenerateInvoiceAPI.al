@@ -370,6 +370,8 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
             Resrv."Creation Date" := WorkDate();
             Resrv."Shipment Date" := SaleInL."Shipment Date";
+            if ItemLedgEntry."Lot No." <> '' then
+                Resrv.Validate("Lot No.", ItemLedgEntry."Lot No.");
             Resrv.Insert(true);
 
             // --- Supply Side(Item Ledger Entry || Positive Qty) ---
@@ -386,6 +388,8 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             Resrv."Expiration Date" := ItemLedgEntry."Expiration Date";
             Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
             Resrv."Creation Date" := WorkDate();
+            if ItemLedgEntry."Lot No." <> '' then
+                Resrv.Validate("Lot No.", ItemLedgEntry."Lot No.");
             Resrv.Insert(true);
         end;
     
