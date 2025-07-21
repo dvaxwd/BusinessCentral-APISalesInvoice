@@ -1,6 +1,7 @@
 codeunit 90000 "NDC-GenerateInvoiceAPI"
 {
     var
+        LotRealTimeBalance: Dictionary of [code[50], Decimal];
         FailPostDict: Dictionary of [Code[20], Text[250]];
 
     procedure ProcessToCreateInv(TransectionRec: Record "NDC-Transaction DateTime")
@@ -264,6 +265,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
 
             QtyToAssign: Decimal;
             QtyFromThisLot: Decimal;
+            LotAvailableQty: Decimal;
         begin
             QtyToAssign := SaleInL."Quantity (Base)";
 
@@ -277,16 +279,28 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 repeat
                     if QtyToAssign <= 0 then break;
 
-                    // --- Assign quantity from the current lot ---
-                    if ItemLedgEntry."Remaining Quantity" >= QtyToAssign then begin
+                    // --- Check real time remain quantity in each lot ---
+                    if not LotRealTimeBalance.ContainsKey(ItemLedgEntry."Lot No.") then begin
+                        LotAvailableQty := ItemLedgEntry."Remaining Quantity";
+                        LotRealTimeBalanceManagement(ItemLedgEntry."Lot No.",ItemLedgEntry."Remaining Quantity"); // Add lot to dict
+                    end else begin
+                        LotAvailableQty := LotRealTimeBalance.Get(ItemLedgEntry."Lot No.");
+                    end;
+                    
+                    // --- No remain qunatity left for this lot --- 
+                    if LotAvailableQty <= 0 then continue;
+
+                    // --- Calculate assignable quantity ---
+                    if LotAvailableQty >= QtyToAssign then begin
                         QtyFromThisLot := QtyToAssign
                     end else begin
-                        QtyFromThisLot := ItemLedgEntry."Remaining Quantity";
+                        QtyFromThisLot := LotAvailableQty;
                     end;
 
                     // --- If select form current lot ---
                     if QtyFromThisLot > 0 then begin
                         CreateReservation(ItemLedgEntry,SaleInL,QtyFromThisLot);
+                        LotRealTimeBalanceManagement(ItemLedgEntry."Lot No.", QtyFromThisLot); // modify dic value
                     end;
 
                     QtyToAssign -= QtyFromThisLot;
@@ -403,6 +417,16 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             end;
         end;
 
+    // ***** Thsi procedure is used to add or update an entry in LotRealTimeBalance *****
+    local procedure LotRealTimeBalanceManagement(LotDictKey: code[50]; Quantity: Decimal)
+        begin
+            if not LotRealTimeBalance.ContainsKey(LotDictKey) then begin
+                LotRealTimeBalance.Add(LotDictKey,Quantity)
+            end else begin
+                LotRealTimeBalance.Set(LotDictKey,LotRealTimeBalance.Get(LotDictKey)-Quantity);
+            end;
+        end;
+    
     // ***** This procedure returns the next available Entry No. for Reservation Entry. *****
     local procedure LastResvEntryNo(): Integer
         var
