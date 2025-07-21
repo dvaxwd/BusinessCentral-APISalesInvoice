@@ -1,6 +1,7 @@
 codeunit 90000 "NDC-GenerateInvoiceAPI"
 {
     var
+        LotRealTimeBalance: Dictionary of [code[50], Decimal];
         FailPostDict: Dictionary of [Code[20], Text[250]];
 
     procedure ProcessToCreateInv(TransectionRec: Record "NDC-Transaction DateTime")
@@ -256,19 +257,19 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
+    // ***** This procedure is used to assign a lot number to items with lot control *****
     procedure AssignLotNo(SaleInL: Record "Sales Line"; SaleH: Record "Sales Header")
         var
             ItemLedgEntry: Record "Item Ledger Entry";
             ResrvEntry: Record "Reservation Entry";
-            EntrySummary: Record "Entry Summary" temporary;
 
             QtyToAssign: Decimal;
             QtyFromThisLot: Decimal;
-            LastReservEntryNo: Integer;
+            LotAvailableQty: Decimal;
         begin
             QtyToAssign := SaleInL."Quantity (Base)";
-            EntrySummary.DeleteAll();
-            // ***** Filter Item Ledger Entry: หาล็อตที่ยังเหลือในสต๊อก ไปใส่ใน Entry Summary เพื่อหา lot ที่ใช้ได้*****
+
+            // --- Filter Item Ledger Entry to find open lots and create reservations ---
             ItemLedgEntry.SetCurrentKey("Item No.", "Open", "Location Code", "Lot No.");
             ItemLedgEntry.SetRange("Item No.", SaleInL."No.");
             ItemLedgEntry.SetRange("Open", true);
@@ -276,124 +277,65 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             ItemLedgEntry.SetFilter("Lot No.", '<>%1', '');
             if ItemLedgEntry.FindSet() then begin
                 repeat
-                    EntrySummary.Init();
-                    EntrySummary."Entry No." := ItemLedgEntry."Entry No.";
-                    EntrySummary."Lot No." := ItemLedgEntry."Lot No.";
-                    EntrySummary."Total Quantity" := ItemLedgEntry.Quantity;
-                    EntrySummary."Expiration Date" := ItemLedgEntry."Expiration Date";
-                    EntrySummary."Total Available Quantity" := ItemLedgEntry."Remaining Quantity";
-                    EntrySummary.Insert();
-                until ItemLedgEntry.Next() = 0;
-            end else begin
-                if not FailPostDict.ContainsKey(SaleInL."Document No.") then begin
-                    FailPostDict.Add(
-                        SaleInL."Document No.",
-                        StrSubstNo(
-                            'No available lot found in location: Item=%1, Location=%2',
-                            SaleInL."No.", SaleInL."Location Code"));
-                end else begin
-                    FailPostDict.Set(
-                        SaleInL."Document No.",
-                        StrSubstNo(
-                            'No available lot found in location: Item=%1, Location=%2',
-                            SaleInL."No.", SaleInL."Location Code"));
-                end;
-            end;
-
-            // ***** Find Last Entry No. *****
-            if ResrvEntry.FindLast() then
-                LastReservEntryNo := ResrvEntry."Entry No."
-            else
-                LastReservEntryNo := 0;
-
-            // ***** Loop EntrySummary ที่เก็บ lot ที่สามารถใช้ได้ เพื่อทำการ Insert ข้อมูลไปยัง Reservation Entry *****
-            if EntrySummary.FindSet() then begin
-                repeat
                     if QtyToAssign <= 0 then break;
 
-                    // ****** Assign จำนวนที่จะหยิบจาก Lot ปัจจุบัน *****
-                    if EntrySummary."Total Available Quantity" >= QtyToAssign then begin
+                    // --- Check real time remain quantity in each lot ---
+                    if not LotRealTimeBalance.ContainsKey(ItemLedgEntry."Lot No.") then begin
+                        LotAvailableQty := ItemLedgEntry."Remaining Quantity";
+                        LotRealTimeBalanceManagement(ItemLedgEntry."Lot No.",ItemLedgEntry."Remaining Quantity"); // Add lot to dict
+                    end else begin
+                        LotAvailableQty := LotRealTimeBalance.Get(ItemLedgEntry."Lot No.");
+                    end;
+                    
+                    // --- No remain qunatity left for this lot --- 
+                    if LotAvailableQty <= 0 then continue;
+
+                    // --- Calculate assignable quantity ---
+                    if LotAvailableQty >= QtyToAssign then begin
                         QtyFromThisLot := QtyToAssign
                     end else begin
-                        QtyFromThisLot := EntrySummary."Total Available Quantity";
+                        QtyFromThisLot := LotAvailableQty;
                     end;
 
-                    // ***** ถ้าหยิบจาก Lot ปัจจุบัน *****
+                    // --- If select form current lot ---
                     if QtyFromThisLot > 0 then begin
-                        LastReservEntryNo += 1;
-
-                        // --- ขา Demand (ฝั่ง Sales Line / -ve Qty) ---
-                        ResrvEntry.Init();
-                        ResrvEntry."Entry No." := LastReservEntryNo;
-                        ResrvEntry.Positive := false;
-                        ResrvEntry."Item No." := SaleInL."No.";
-                        ResrvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResrvEntry."Location Code" := SaleInL."Location Code";
-                        ResrvEntry.Validate("Quantity (Base)", -QtyFromThisLot);
-                        ResrvEntry."Source Type" := DATABASE::"Sales Line";
-                        ResrvEntry."Source Subtype" := SaleInL."Document Type".AsInteger();
-                        ResrvEntry."Source ID" := SaleInL."Document No.";
-                        ResrvEntry."Source Ref. No." := SaleInL."Line No.";
-                        ResrvEntry.Validate("Lot No.", EntrySummary."Lot No.");
-                        ResrvEntry."Reservation Status" := ResrvEntry."Reservation Status"::Reservation;
-                        ResrvEntry."Creation Date" := WorkDate();
-                        ResrvEntry."Shipment Date" := SaleInL."Shipment Date";
-                        ResrvEntry.Insert(true);
-
-                        // --- ขา Supply (ฝั่ง ILE / +ve Qty) ---
-                        ResrvEntry.Init();
-                        ResrvEntry."Entry No." := LastReservEntryNo; // ต้องใช้เลขเดียวกัน
-                        ResrvEntry.Positive := true;
-                        ResrvEntry."Item No." := SaleInL."No.";
-                        ResrvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResrvEntry."Location Code" := SaleInL."Location Code";
-                        ResrvEntry.Validate("Quantity (Base)", QtyFromThisLot);
-                        ResrvEntry."Source Type" := DATABASE::"Item Ledger Entry";
-                        ResrvEntry."Source ID" := '';
-                        ResrvEntry."Source Ref. No." := EntrySummary."Entry No."; // ชี้ไปที่ ILE
-                        ResrvEntry.Validate("Lot No.", EntrySummary."Lot No.");
-                        ResrvEntry."Expiration Date" := EntrySummary."Expiration Date";
-                        ResrvEntry."Reservation Status" := ResrvEntry."Reservation Status"::Reservation;
-                        ResrvEntry."Creation Date" := WorkDate();
-                        ResrvEntry.Insert(true);
+                        CreateReservation(ItemLedgEntry,SaleInL,QtyFromThisLot);
+                        LotRealTimeBalanceManagement(ItemLedgEntry."Lot No.", QtyFromThisLot); // modify dic value
                     end;
 
                     QtyToAssign -= QtyFromThisLot;
-                until EntrySummary.Next() = 0;
-            end;
-
-            // ***** Check if not all quantity was assigned *****
-            if QtyToAssign > 0 then begin
-                if not FailPostDict.ContainsKey(SaleInL."Document No.") then begin
-                    FailPostDict.Add(
+                until ItemLedgEntry.Next() = 0;
+                
+                // --- Check if not all quantity was assigned ---
+                if QtyToAssign > 0 then begin
+                    FailPostDictManagement(
                         SaleInL."Document No.",
                         StrSubstNo(
                             'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
-                            SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No.")
-                    );
-                end else begin
-                    FailPostDict.Set(
-                        SaleInL."Document No.",
-                        StrSubstNo(
-                            'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
-                            SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No.")
-                    );
+                            SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No."));
                 end;
+            end else begin
+                FailPostDictManagement(SaleInL."Document No.",
+                    StrSubstNo(
+                        'No available lot found in location: Item=%1, Location=%2',
+                        SaleInL."No.",SaleInL."Location Code"));
             end;
         end;
 
+    // ***** This procedure is used to assign a serial number to items with serial control *****
     procedure AssignSerialNo(SaleH: Record "Sales Header"; SaleInL: Record "Sales Line"; SerialNo: Code[50])
         var
             ItemLedgEntry: Record "Item Ledger Entry";
             ResvEntry: Record "Reservation Entry";
 
             QtyToAssign: Decimal;
-            LastResvEntryNo: Integer;
             ILEMatch: Boolean;
         begin
             ILEMatch := false;
             QtyToAssign := SaleInL."Quantity (Base)";
-            ItemLedgEntry.SetCurrentKey("Item No.", "Open", "Location Code", "Lot No.");
+
+            // --- Filter Item Ledger Entry ---
+            ItemLedgEntry.SetCurrentKey("Item No.", "Open", "Location Code");
             ItemLedgEntry.SetRange("Item No.", SaleInL."No.");
             ItemLedgEntry.SetRange("Open", true);
             ItemLedgEntry.SetRange("Location Code", SaleInL."Location Code");
@@ -402,40 +344,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                     if QtyToAssign <= 0 then break;
                     if ItemLedgEntry."Serial No." = SerialNo then begin
                         ILEMatch := true;
-
-                        // --- ขา Demand (ฝั่ง Sales Line / -ve Qty) ---
-                        ResvEntry.Init();
-                        ResvEntry."Entry No." := LastResvEntryNo();
-                        ResvEntry.Positive := false;
-                        ResvEntry."Item No." := SaleInL."No.";
-                        ResvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResvEntry."Location Code" := SaleInL."Location Code";
-                        ResvEntry.Validate("Quantity (Base)", -1);
-                        ResvEntry."Source Type" := DATABASE::"Sales Line";
-                        ResvEntry."Source Subtype" := SaleInL."Document Type".AsInteger();
-                        ResvEntry."Source ID" := SaleInL."Document No.";
-                        ResvEntry."Source Ref. No." := SaleInL."Line No.";
-                        ResvEntry."Reservation Status" := ResvEntry."Reservation Status"::Reservation;
-                        ResvEntry."Creation Date" := WorkDate();
-                        ResvEntry."Shipment Date" := SaleInL."Shipment Date";
-                        ResvEntry.Insert(true);
-
-                        // --- ขา Supply (ฝั่ง ILE / +ve Qty) ---
-                        ResvEntry.Init();
-                        ResvEntry."Entry No." := LastResvEntryNo();
-                        ResvEntry.Positive := true;
-                        ResvEntry."Item No." := SaleInL."No.";
-                        ResvEntry."Variant Code" := SaleInL."Variant Code";
-                        ResvEntry."Location Code" := SaleInL."Location Code";
-                        ResvEntry.Validate("Quantity (Base)", 1);
-                        ResvEntry."Source Type" := DATABASE::"Item Ledger Entry";
-                        ResvEntry."Source ID" := '';
-                        ResvEntry."Source Ref. No." := ItemLedgEntry."Entry No.";
-                        ResvEntry."Expiration Date" := ItemLedgEntry."Expiration Date";
-                        ResvEntry."Reservation Status" := ResvEntry."Reservation Status"::Reservation;
-                        ResvEntry."Creation Date" := WorkDate();
-                        ResvEntry.Insert(true);
-                        
+                        CreateReservation(ItemLedgEntry,SaleInL,1);
                         QtyToAssign -= 1;
                     end;
                     if QtyToAssign <= 0 then exit;
@@ -452,6 +361,53 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             end;
         end;
     
+    // ***** This procedure is used to create reservation.Demand side and supply side *****
+    local procedure CreateReservation(ItemLedgEntry: Record "Item Ledger Entry"; SaleInL: Record "Sales Line"; Quantity: Decimal)
+        var
+            Resrv: Record "Reservation Entry";
+            LastEntryNo: Integer;
+        begin
+            LastEntryNo := LastResvEntryNo();
+
+            // --- Demand Side(Sales Line || Negative Qty) ---
+            Resrv.Init();
+            Resrv."Entry No." := LastEntryNo;
+            Resrv.Positive := false;
+            Resrv."Item No." := SaleInL."No.";
+            Resrv."Variant Code" := SaleInL."Variant Code";
+            Resrv."Location Code" := SaleInL."Location Code";
+            Resrv.Validate("Quantity (Base)",-Quantity);
+            Resrv."Source Type" := Database::"Sales Line";
+            Resrv."Source Subtype" := SaleInL."Document Type".AsInteger();
+            Resrv."Source ID" := SaleInL."Document No.";
+            Resrv."Source Ref. No." := SaleInL."Line No.";
+            Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
+            Resrv."Creation Date" := WorkDate();
+            Resrv."Shipment Date" := SaleInL."Shipment Date";
+            if ItemLedgEntry."Lot No." <> '' then
+                Resrv.Validate("Lot No.", ItemLedgEntry."Lot No.");
+            Resrv.Insert(true);
+
+            // --- Supply Side(Item Ledger Entry || Positive Qty) ---
+            Resrv.Init();
+            Resrv."Entry No." := LastEntryNo;
+            Resrv.Positive := true;
+            Resrv."Item No." := SaleInL."No.";
+            Resrv."Variant Code" := SaleInL."Variant Code";
+            Resrv."Location Code" := SaleInL."Location Code";
+            Resrv.Validate("Quantity (Base)",Quantity);
+            Resrv."Source Type" := Database::"Item Ledger Entry";
+            Resrv."Source ID" := '';
+            Resrv."Source Ref. No." := ItemLedgEntry."Entry No.";
+            Resrv."Expiration Date" := ItemLedgEntry."Expiration Date";
+            Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
+            Resrv."Creation Date" := WorkDate();
+            if ItemLedgEntry."Lot No." <> '' then
+                Resrv.Validate("Lot No.", ItemLedgEntry."Lot No.");
+            Resrv.Insert(true);
+        end;
+    
+    // ***** This procedure adds or updates an entry in the FailPostDict. *****
     local procedure FailPostDictManagement(DictKey: Code[20]; Value: Text[250])
         begin
             if not FailPostDict.ContainsKey(DictKey) then begin
@@ -461,10 +417,20 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             end;
         end;
 
+    // ***** Thsi procedure is used to add or update an entry in LotRealTimeBalance *****
+    local procedure LotRealTimeBalanceManagement(LotDictKey: code[50]; Quantity: Decimal)
+        begin
+            if not LotRealTimeBalance.ContainsKey(LotDictKey) then begin
+                LotRealTimeBalance.Add(LotDictKey,Quantity)
+            end else begin
+                LotRealTimeBalance.Set(LotDictKey,LotRealTimeBalance.Get(LotDictKey)-Quantity);
+            end;
+        end;
+    
+    // ***** This procedure returns the next available Entry No. for Reservation Entry. *****
     local procedure LastResvEntryNo(): Integer
         var
             ResvEntry: Record "Reservation Entry";
-            LastEntryNo: Integer;
         begin
             Clear(ResvEntry);
             if ResvEntry.FindLast() then
@@ -473,28 +439,32 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 exit(1);
         end;
     
+    // ***** This procedure is used to log the result of posting a sales invoice. *****
     local procedure Log(SaleH: Record "Sales Header"; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; SIDate: DateTime)
-    var
-        SIPLog: Record "NDC-SalesInvoicesPostLog";
-        Location: Record "Location";
-    begin
-        // SIPLog.DeleteAll();
-        SIPLog.init();
-        SIPLog."Invoice No." := SaleH."No.";
-        SIPLog."Customer No." := SaleH."Sell-to Customer No.";
-        SIPLog."Customer Name" := SaleH."Sell-to Customer Name";
-        SIPLog."Location Code" := SaleH."Location Code";
-        Location.SetRange(Code, SaleH."Location Code");
-        if Location.FindFirst() then begin
-            SIPLog."Location Name" := Location.Name;
-        end;
-        SIPLog."Post Status" := SIStatus;
-        SIPLog."Error Message" := SIErrMes;
-        SIPLog."Post Attempt DateTime" := SIDate;
-        SIPLog."Transaction ID" := SaleH."NDC-Ref. Guid";
-        SIPLog.Insert();
-    end;
+        var
+            SIPLog: Record "NDC-SalesInvoicesPostLog";
+            Location: Record "Location";
+        begin
+            SIPLog.init();
+            SIPLog."Invoice No." := SaleH."No.";
+            SIPLog."Customer No." := SaleH."Sell-to Customer No.";
+            SIPLog."Customer Name" := SaleH."Sell-to Customer Name";
+            SIPLog."Location Code" := SaleH."Location Code";
+            
+            // --- Map Location Code to Location Name ---
+            Location.SetRange(Code, SaleH."Location Code");
+            if Location.FindFirst() then begin
+                SIPLog."Location Name" := Location.Name;
+            end;
 
+            SIPLog."Post Status" := SIStatus;
+            SIPLog."Error Message" := SIErrMes;
+            SIPLog."Post Attempt DateTime" := SIDate;
+            SIPLog."Transaction ID" := SaleH."NDC-Ref. Guid";
+            SIPLog.Insert();
+        end;
+
+    // ***** This procedure is used to insert a log entry based on whether the invoice failed or succeeded. *****
     local procedure InsertLog(SaleH: Record "Sales Header")
         begin
             if FailPostDict.ContainsKey(SaleH."No.") then begin
