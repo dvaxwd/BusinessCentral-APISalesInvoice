@@ -59,6 +59,8 @@ table 90002 "NDC-Invoice Detail"
         field(13; "Amount Inc. VAT"; Decimal)
         {
             DataClassification = ToBeClassified;
+        }field(14; "Serial No."; Code[50]){
+            DataClassification = ToBeClassified;
         }
     }
 
