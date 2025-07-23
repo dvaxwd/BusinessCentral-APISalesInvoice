@@ -336,6 +336,9 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             exit;
         end else begin
             if SaleInL."Quantity (Base)" <> 1 then begin
+                FailPostDictManagement(SaleInL."Document No.",
+                        StrSubstNo('Quantity must be 1 for serial-controlled item: Item = %1, Quantity = %2',
+                            SaleInL."No.", SaleInL."Quantity (Base)"));
                 exit;
             end else begin
                 if TranferItem(SaleInL, 'WHLGST', SerialNo, OutPositiveILE) then begin
