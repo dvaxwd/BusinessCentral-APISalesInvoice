@@ -34,6 +34,9 @@ page 90003 "NDC-InvoiceDetailApi"
                 {
                     Caption = 'Description';
                 }
+                field(serialNo; Rec."Serial No."){
+                    Caption = 'Serial';
+                }
                 field(quantity; Rec.Quantity)
                 {
                     Caption = 'Quantity';
