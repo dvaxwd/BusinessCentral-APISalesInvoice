@@ -33,7 +33,7 @@ table 90007 "NDC-SalesInvoicesPostLog"
         {
             Caption = 'Post Status';
         }
-        field(8; "Error Message"; Text[250])
+        field(8; "Error Message"; Text[1000])
         {
             Caption = 'Error Message';
         }

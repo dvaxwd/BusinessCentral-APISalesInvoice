@@ -2,7 +2,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
 {
     var
         LotRealTimeBalance: Dictionary of [code[50], Decimal];
-        FailPostDict: Dictionary of [Code[20], Text[250]];
+        FailPostDict: Dictionary of [Code[20], List of [Text[250]]];
 
     procedure ProcessToCreateInv(TransectionRec: Record "NDC-Transaction DateTime")
     var
@@ -553,16 +553,20 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 exit(Resrv);
         end;
 
-
     // ***** This procedure adds or updates an entry in the FailPostDict. *****
     local procedure FailPostDictManagement(DictKey: Code[20]; Value: Text[250])
-    begin
-        if not FailPostDict.ContainsKey(DictKey) then begin
-            FailPostDict.Add(DictKey, Value)
-        end else begin
-            FailPostDict.Set(DictKey, Value);
+        var
+            DictValue: List of [Text[250]];
+        begin
+            if not FailPostDict.ContainsKey(DictKey) then begin
+                DictValue.Add(Value);
+                FailPostDict.Add(DictKey, DictValue);
+            end else begin
+                DictValue := FailPostDict.Get(DictKey);
+                DictValue.Add(Value);
+                FailPostDict.Set(DictKey, DictValue);
+            end;
         end;
-    end;
 
     // ***** Thsi procedure is used to add or update an entry in LotRealTimeBalance *****
     local procedure LotRealTimeBalanceManagement(LotDictKey: code[50]; Quantity: Decimal)
@@ -625,11 +629,20 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
 
     // ***** This procedure is used to insert a log entry based on whether the invoice failed or succeeded. *****
     local procedure InsertLog(SaleH: Record "Sales Header")
-    begin
-        if FailPostDict.ContainsKey(SaleH."No.") then begin
-            Log(SaleH, Enum::"NDC-PostStatus"::Fail, FailPostDict.Get(SaleH."No."), CurrentDateTime);
-        end else begin
-            Log(SaleH, Enum::"NDC-PostStatus"::Success, 'Posted without errors', CurrentDateTime);
+        var
+            DictValue: List of [Text[250]];
+            Value: Text;
+            ErrMessage: Text;
+        begin
+            if FailPostDict.ContainsKey(SaleH."No.") then begin
+                DictValue := FailPostDict.Get(SaleH."No.");
+                ErrMessage := '';
+                foreach Value in DictValue do begin
+                    ErrMessage := Format(ErrMessage + '- ' + Value + '\');
+                end;
+                Log(SaleH, Enum::"NDC-PostStatus"::Fail, ErrMessage, CurrentDateTime);
+            end else begin
+                Log(SaleH, Enum::"NDC-PostStatus"::Success, 'Posted without errors', CurrentDateTime);
+            end;
         end;
-    end;
 }
