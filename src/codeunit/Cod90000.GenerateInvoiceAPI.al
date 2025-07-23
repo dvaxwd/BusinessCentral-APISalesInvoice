@@ -148,17 +148,6 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                     CreateAsmOrder(CusBill, SIL);
                 end;
 
-                // ***** Now Usage Support Lot Controll *****
-                // ItemRequireLot.Reset();
-                // ItemRequireLot.SetRange("No.", InvDetail."Item No.");
-                // if ItemRequireLot.FindSet() then begin
-                //     repeat
-                //         if ItemRequireLot."Item Tracking Code" <> '' then begin
-                //             AssignLotNo(SIL, SIH);
-                //         end;
-                //     until ItemRequireLot.Next() = 0;
-                // end;
-
                 // ***** Support Lot Control & Serial Control *****
                 ItemRequireControll.Reset();
                 ItemRequireControll.SetRange("No.", InvDetail."Item No.");
@@ -168,9 +157,9 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                         ITC.SetRange(Code, ItemRequireControll."Item Tracking Code");
                         if ITC.FindFirst() then begin
                             if ITC."Lot Sales Inbound Tracking" then
-                                AssignLotNo(SIL, SIH);
+                                AssignLotNo(SIL);
                             if ITC."SN Sales Inbound Tracking" then
-                                AssignSerialNo(SIH, SIL, InvDetail."Serial No.");
+                                AssignSerialNo(SIL, InvDetail."Serial No.");
                         end;
                     end;
                 end;
@@ -258,10 +247,9 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
     end;
 
     // ***** This procedure is used to assign a lot number to items with lot control *****
-    procedure AssignLotNo(SaleInL: Record "Sales Line"; SaleH: Record "Sales Header")
+    procedure AssignLotNo(SaleInL: Record "Sales Line")
     var
         ItemLedgEntry: Record "Item Ledger Entry";
-        ResrvEntry: Record "Reservation Entry";
 
         QtyToAssign: Decimal;
         QtyFromThisLot: Decimal;
@@ -292,7 +280,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
 
                 // --- Calculate assignable quantity ---
                 if LotAvailableQty >= QtyToAssign then begin
-                    QtyFromThisLot := QtyToAssign
+                    QtyFromThisLot := QtyToAssign;
                 end else begin
                     QtyFromThisLot := LotAvailableQty;
                 end;
@@ -323,14 +311,13 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
     end;
 
     // ***** This procedure is used to assign a serial number to items with serial control *****
-    procedure AssignSerialNo(SaleH: Record "Sales Header"; SaleInL: Record "Sales Line"; SerialNo: Code[50])
+    procedure AssignSerialNo(SaleInL: Record "Sales Line"; SerialNo: Code[50])
     var
         ItemLedgEntry: Record "Item Ledger Entry";
-        ResvEntry: Record "Reservation Entry";
         OutPositiveILE: Record "Item Ledger Entry";
     begin
         if SerialNo = '' then begin
-            FailPostDictManagement(SaleH."No.",
+            FailPostDictManagement(SaleInL."Document No.",
                 StrSubstNo('required serial no. for item : item=%1',
                 SaleInL."No."));
             exit;
@@ -357,7 +344,6 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                 end;
             end;
         end;
-
     end;
 
     // ***** This procedure is used to transfer item from center to retail store *****
@@ -399,11 +385,11 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             ItemJnL.Validate("New Location Code", SaleInL."Location Code");
             ItemJnL.Validate("Posting Date", Today);
             ItemJnL.Validate(Quantity, 1);
-            ItemJnL.Validate("Serial No.",SerialNo);
+            ItemJnL.Validate("Serial No.", SerialNo);
             ItemJnL."New Serial No." := SerialNo;
             ItemJnL."Source Code" := 'TRANSFER';
             ItemJnL.Insert();
-            
+
             Resrv := CreateReservJnL(ItemJnL);
             ItemJnLPostLine.RunPostWithReservation(ItemJnL, Resrv);
 
@@ -417,37 +403,6 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             else
                 exit(false);
         end;
-    end;
-
-    procedure CreateTrackingSpecificationForItemJnlLine(ItemJnlLine: Record "Item Journal Line"; SerialNo: Code[50])
-    var
-        TrackingSpec: Record "Tracking Specification";
-        QuantityBase: Decimal;
-        EntryNo: Integer;
-    begin
-        if TrackingSpec.FindLast() then begin
-            EntryNo := TrackingSpec."Entry No."
-        end;
-        EntryNo += 10000;
-        TrackingSpec.Init();
-        TrackingSpec.Validate("Source Type", DATABASE::"Item Journal Line");
-        TrackingSpec.Validate("Source Subtype", 0);
-        TrackingSpec.Validate("Source ID", ItemJnlLine."Journal Template Name");
-        TrackingSpec.Validate("Source Batch Name", ItemJnlLine."Journal Batch Name");
-        TrackingSpec.Validate("Source Ref. No.", ItemJnlLine."Line No.");
-        TrackingSpec."Entry No." := EntryNo;
-        TrackingSpec.Validate("Item No.", ItemJnlLine."Item No.");
-        TrackingSpec.Validate("Variant Code", ItemJnlLine."Variant Code");
-        TrackingSpec.Validate("Location Code", ItemJnlLine."Location Code");
-        TrackingSpec.Validate("Serial No.", SerialNo);
-
-        QuantityBase := ItemJnlLine.Quantity * ItemJnlLine."Qty. per Unit of Measure";
-        TrackingSpec.Validate("Quantity (Base)", QuantityBase);
-
-        TrackingSpec."Lot No." := '';
-        TrackingSpec."Qty. per Unit of Measure" := ItemJnlLine."Qty. per Unit of Measure";
-
-        TrackingSpec.Insert();
     end;
 
     // ***** This procedure is used to create reservation.Demand side and supply side *****
@@ -501,72 +456,72 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
     end;
 
     // ***** This procedure is used to create reservation for Item Jounal Line to assign serial no before tranfer *****
-    procedure CreateReservJnL(var ItemJnL: Record "Item Journal Line"): Record "Reservation Entry"
-        var
-            Resrv: Record "Reservation Entry";
-            ReservMgt: Codeunit "Reservation Management";
-            LastEntryNo: Integer;
-        begin
-            LastEntryNo := LastResvEntryNo();
+    procedure CreateReservJnL(ItemJnL: Record "Item Journal Line"): Record "Reservation Entry"
+    var
+        Resrv: Record "Reservation Entry";
+        ReservMgt: Codeunit "Reservation Management";
+        LastEntryNo: Integer;
+    begin
+        LastEntryNo := LastResvEntryNo();
 
-            // --- Demand Side ---
-            Resrv.Init();
-            Resrv."Entry No." := LastEntryNo;
-            Resrv.Positive := false;
-            Resrv."Item No." := ItemJnL."Item No.";
-            Resrv."Variant Code" := ItemJnL."Variant Code";
-            Resrv."Location Code" := ItemJnL."Location Code";
-            Resrv.Validate("Quantity (Base)", -ItemJnL.Quantity);
-            Resrv."Source Type" := DATABASE::"Item Journal Line";
-            Resrv."Source Subtype" := 0;
-            Resrv."Source ID" := ItemJnL."Journal Template Name";
-            Resrv."Source Ref. No." := ItemJnL."Line No.";
-            Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
-            Resrv."Creation Date" := Today();
-            Resrv."Shipment Date" := ItemJnL."Posting Date";
-            if ItemJnL."Serial No." <> '' then
-                Resrv.Validate("Serial No.", ItemJnL."Serial No.");
-            Resrv.Insert(true);
-            ReservMgt.SetTrackingFromReservEntry(Resrv);
+        // --- Demand Side ---
+        Resrv.Init();
+        Resrv."Entry No." := LastEntryNo;
+        Resrv.Positive := false;
+        Resrv."Item No." := ItemJnL."Item No.";
+        Resrv."Variant Code" := ItemJnL."Variant Code";
+        Resrv."Location Code" := ItemJnL."Location Code";
+        Resrv.Validate("Quantity (Base)", -ItemJnL.Quantity);
+        Resrv."Source Type" := DATABASE::"Item Journal Line";
+        Resrv."Source Subtype" := 0;
+        Resrv."Source ID" := ItemJnL."Journal Template Name";
+        Resrv."Source Ref. No." := ItemJnL."Line No.";
+        Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
+        Resrv."Creation Date" := Today();
+        Resrv."Shipment Date" := ItemJnL."Posting Date";
+        if ItemJnL."Serial No." <> '' then
+            Resrv.Validate("Serial No.", ItemJnL."Serial No.");
+        Resrv.Insert(true);
+        ReservMgt.SetTrackingFromReservEntry(Resrv);
 
-            // --- Supply Side ---
-            Resrv.Init();
-            Resrv."Entry No." := LastEntryNo;
-            Resrv.Positive := true;
-            Resrv."Item No." := ItemJnL."Item No.";
-            Resrv."Variant Code" := ItemJnL."Variant Code";
-            Resrv."Location Code" := ItemJnL."New Location Code";
-            Resrv.Validate("Quantity (Base)", ItemJnL.Quantity);
-            Resrv."Source Type" := DATABASE::"Item Journal Line";
-            Resrv."Source Subtype" := 0;
-            Resrv."Source ID" := ItemJnL."Journal Template Name";
-            Resrv."Source Ref. No." := ItemJnL."Line No.";
-            Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
-            Resrv."Creation Date" := Today();
-            Resrv."Shipment Date" := ItemJnL."Posting Date";
-            if ItemJnL."New Serial No." <> '' then
-                Resrv.Validate("Serial No.", ItemJnL."New Serial No.");
-            Resrv.Insert(true);
-            ReservMgt.SetTrackingFromReservEntry(Resrv);
+        // --- Supply Side ---
+        Resrv.Init();
+        Resrv."Entry No." := LastEntryNo;
+        Resrv.Positive := true;
+        Resrv."Item No." := ItemJnL."Item No.";
+        Resrv."Variant Code" := ItemJnL."Variant Code";
+        Resrv."Location Code" := ItemJnL."New Location Code";
+        Resrv.Validate("Quantity (Base)", ItemJnL.Quantity);
+        Resrv."Source Type" := DATABASE::"Item Journal Line";
+        Resrv."Source Subtype" := 0;
+        Resrv."Source ID" := ItemJnL."Journal Template Name";
+        Resrv."Source Ref. No." := ItemJnL."Line No.";
+        Resrv."Reservation Status" := Resrv."Reservation Status"::Reservation;
+        Resrv."Creation Date" := Today();
+        Resrv."Shipment Date" := ItemJnL."Posting Date";
+        if ItemJnL."New Serial No." <> '' then
+            Resrv.Validate("Serial No.", ItemJnL."New Serial No.");
+        Resrv.Insert(true);
+        ReservMgt.SetTrackingFromReservEntry(Resrv);
 
-            if Resrv.Get(LastEntryNo, false) then
-                exit(Resrv);
-        end;
+        if Resrv.Get(LastEntryNo, false) then
+            exit(Resrv);
+    end;
 
     // ***** This procedure adds or updates an entry in the FailPostDict. *****
     local procedure FailPostDictManagement(DictKey: Code[20]; Value: Text[250])
-        var
-            DictValue: List of [Text[250]];
-        begin
-            if not FailPostDict.ContainsKey(DictKey) then begin
-                DictValue.Add(Value);
-                FailPostDict.Add(DictKey, DictValue);
-            end else begin
-                DictValue := FailPostDict.Get(DictKey);
-                DictValue.Add(Value);
-                FailPostDict.Set(DictKey, DictValue);
-            end;
+    var
+        DictValue: List of [Text[250]];
+    begin
+        if not FailPostDict.ContainsKey(DictKey) then begin
+            DictValue.Add(Value);
+            FailPostDict.Add(DictKey, DictValue);
+        end else begin
+            DictValue := FailPostDict.Get(DictKey);
+            DictValue.Add(Value);
+            FailPostDict.Set(DictKey, DictValue);
         end;
+    end;
 
     // ***** Thsi procedure is used to add or update an entry in LotRealTimeBalance *****
     local procedure LotRealTimeBalanceManagement(LotDictKey: code[50]; Quantity: Decimal)
@@ -629,20 +584,20 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
 
     // ***** This procedure is used to insert a log entry based on whether the invoice failed or succeeded. *****
     local procedure InsertLog(SaleH: Record "Sales Header")
-        var
-            DictValue: List of [Text[250]];
-            Value: Text;
-            ErrMessage: Text;
-        begin
-            if FailPostDict.ContainsKey(SaleH."No.") then begin
-                DictValue := FailPostDict.Get(SaleH."No.");
-                ErrMessage := '';
-                foreach Value in DictValue do begin
-                    ErrMessage := Format(ErrMessage + '- ' + Value + '\');
-                end;
-                Log(SaleH, Enum::"NDC-PostStatus"::Fail, ErrMessage, CurrentDateTime);
-            end else begin
-                Log(SaleH, Enum::"NDC-PostStatus"::Success, 'Posted without errors', CurrentDateTime);
+    var
+        DictValue: List of [Text[250]];
+        Value: Text;
+        ErrMessage: Text;
+    begin
+        if FailPostDict.ContainsKey(SaleH."No.") then begin
+            DictValue := FailPostDict.Get(SaleH."No.");
+            ErrMessage := '';
+            foreach Value in DictValue do begin
+                ErrMessage := Format(ErrMessage + '- ' + Value + '\');
             end;
+            Log(SaleH, Enum::"NDC-PostStatus"::Fail, ErrMessage, CurrentDateTime);
+        end else begin
+            Log(SaleH, Enum::"NDC-PostStatus"::Success, 'Posted without errors', CurrentDateTime);
         end;
+    end;
 }

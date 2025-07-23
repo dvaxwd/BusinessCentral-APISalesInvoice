@@ -21,7 +21,6 @@ page 90011 "NDC-SalesInvoicesPostLog"
                 {
                     Caption = 'Invoice No.';
                     ApplicationArea = All;
-                    //DrillDownPageId = "Sales Invoice";
                 }
                 field("CustomerNo."; Rec."Customer No.")
                 {
@@ -87,7 +86,6 @@ page 90011 "NDC-SalesInvoicesPostLog"
                 {
                     Caption = 'Open Sale Invoice';
                     Image = View;
-                    //Visible = Rec."Post Status" = Enum::"NDC-PostStatus"::Fail;
                     ApplicationArea = All;
                     Enabled = Rec."Post Status" = Enum::"NDC-PostStatus"::Fail;
                     trigger OnAction()
