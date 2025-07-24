@@ -5,14 +5,13 @@ async function LoadSummaryData(ResultArray) {
     console.log('Load Summary Data');
     console.log(ResultArray);
     document.getElementById("controlAddIn").innerHTML = `
-        <div id="filterArea">
-        
-        </div>
-        <div class="row d-flex justify-content-evenly h-auto" id="cardArea">
-            <h1>In Inner HTML</h1>
-        </div>
+        <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
+        <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
     `;
+    const filterArea = document.getElementById("filterArea");
     const cardArea = document.getElementById("cardArea");
+
+    await FilterManagement(filterArea);
     await LoadSummaryCard(cardArea, ResultArray);
 }
 
@@ -75,4 +74,48 @@ async function CreateCard(targetElement,header, amount, style) {
     card.appendChild(cardBody);
 
     targetElement.appendChild(card);
+}
+
+// ***** This function is used to manage filter *****
+async function FilterManagement(targetElement) {
+    targetElement.innerHTML = ``;
+
+    const dropDown = document.createElement("div");
+    dropDown.className = "dropdown";
+
+    const toggle = document.createElement("button");
+    toggle.className = "btn btn-sm dropdown-toggle px-3 border border-black";
+    toggle.type = "button";
+    toggle.id = "monthDropdown"; // สำหรับ aria-labelledby
+    toggle.setAttribute("data-bs-toggle", "dropdown");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.textContent = "Month";
+
+    // สร้าง ul สำหรับเมนู dropdown
+    const menu = document.createElement("ul");
+    menu.className = "dropdown-menu dropdown-menu-light";
+    menu.setAttribute("aria-labelledby", "monthDropdown");
+
+    const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    months.forEach((month, index) => {
+        const li = document.createElement("li");
+        const option = document.createElement("a");
+        option.className = "dropdown-item";
+        option.href = "#"; // จำเป็นสำหรับ Bootstrap
+        option.dataset.value = month;
+        option.textContent = new Date(0, index).toLocaleString('default', { month: 'long' });
+        option.addEventListener("click", function (e) {
+            e.preventDefault();
+            toggle.textContent = option.textContent; // เปลี่ยนชื่อปุ่มเป็นเดือนที่เลือก
+            console.log("Selected month:", month);    // แสดงใน console
+            // หากต้องการส่งค่ากลับ AL:
+            // Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnMonthSelected', [month]);
+        });
+        li.appendChild(option);
+        menu.appendChild(li);
+    });
+    dropDown.appendChild(toggle);
+    dropDown.appendChild(menu);
+
+    targetElement.appendChild(dropDown);
 }
