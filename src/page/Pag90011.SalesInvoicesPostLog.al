@@ -67,7 +67,7 @@ page 90011 "NDC-SalesInvoicesPostLog"
             }
         }area(FactBoxes){
             part(conaddin; "NDC-FactBoxArea"){
-                Caption = 'Log Summary';
+                Caption = 'Sale Invoice Summary';
                 ApplicationArea = All;
             }
         }

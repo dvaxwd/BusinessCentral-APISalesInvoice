@@ -79,19 +79,63 @@ async function CreateCard(targetElement,header, amount, style) {
 // ***** This function is used to manage filter *****
 async function FilterManagement(targetElement) {
     targetElement.innerHTML = ``;
+    
+    CreateMonthDropdown(targetElement);
+    CreateYearDropdown(targetElement);
+}
 
+// ***** This function is used to create year dropdown element *****
+function CreateYearDropdown(targetElement){
+    const dropDown = document.createElement("div");
+    dropDown.className = "dropDown mx-3";
+
+    const toggle = document.createElement("button");
+    toggle.className = "btn btn-sm dropdown-toggle px-3 border border-black";
+    toggle.type = "button";
+    toggle.id = "yearDropdown";
+    toggle.setAttribute("data-bs-toggle", "dropdown");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.textContent = "Years";
+
+    const menu = document.createElement("ul");
+    menu.className = "dropdown-menu dropdown-menu-light";
+    menu.setAttribute("aria-labelledby", "monthDropdown");
+
+    const years = new Date().getFullYear();
+    for(let i = years - 5; i <= years; i++){
+        const li = document.createElement("li");
+        const option = document.createElement("a");
+        option.className = "dropdown-item";
+        option.href = "#";
+        option.dataset.value = i;
+        option.textContent = i;
+        option.addEventListener("click", function (e) {
+            e.preventDefault();
+            toggle.textContent = option.textContent;
+            Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnYearSelected', [i]);
+        });
+        li.appendChild(option);
+        menu.appendChild(li);
+    }
+    dropDown.appendChild(toggle);
+    dropDown.appendChild(menu);
+
+    targetElement.appendChild(dropDown);
+}
+
+// ***** This function is used to create month dropdown element *****
+function CreateMonthDropdown(targetElement){
     const dropDown = document.createElement("div");
     dropDown.className = "dropdown";
 
     const toggle = document.createElement("button");
     toggle.className = "btn btn-sm dropdown-toggle px-3 border border-black";
     toggle.type = "button";
-    toggle.id = "monthDropdown"; // สำหรับ aria-labelledby
+    toggle.id = "monthDropdown";
     toggle.setAttribute("data-bs-toggle", "dropdown");
     toggle.setAttribute("aria-expanded", "false");
-    toggle.textContent = "Month";
+    toggle.textContent = "Months";
 
-    // สร้าง ul สำหรับเมนู dropdown
     const menu = document.createElement("ul");
     menu.className = "dropdown-menu dropdown-menu-light";
     menu.setAttribute("aria-labelledby", "monthDropdown");
@@ -101,15 +145,13 @@ async function FilterManagement(targetElement) {
         const li = document.createElement("li");
         const option = document.createElement("a");
         option.className = "dropdown-item";
-        option.href = "#"; // จำเป็นสำหรับ Bootstrap
+        option.href = "#";
         option.dataset.value = month;
         option.textContent = new Date(0, index).toLocaleString('default', { month: 'long' });
         option.addEventListener("click", function (e) {
             e.preventDefault();
-            toggle.textContent = option.textContent; // เปลี่ยนชื่อปุ่มเป็นเดือนที่เลือก
-            console.log("Selected month:", month);    // แสดงใน console
-            // หากต้องการส่งค่ากลับ AL:
-            // Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnMonthSelected', [month]);
+            toggle.textContent = option.textContent;
+            Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnMonthSelected', [month]);
         });
         li.appendChild(option);
         menu.appendChild(li);

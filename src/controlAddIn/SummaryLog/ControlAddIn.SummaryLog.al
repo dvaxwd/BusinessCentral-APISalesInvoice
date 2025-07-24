@@ -1,5 +1,5 @@
 controladdin "NDC-SummaryLog"{
-    RequestedHeight = 700;
+    RequestedHeight = 500;
     RequestedWidth = 300;
     VerticalStretch = true;
     HorizontalStretch = true;
@@ -13,4 +13,6 @@ controladdin "NDC-SummaryLog"{
     event controlReady()    
 
     procedure LoadSummaryData(ResultArray: Text)
+    procedure OnYearSelected(YearText: Text)
+    procedure OnMonthSelected(MonthText: Text)
 }
