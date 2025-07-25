@@ -7,12 +7,17 @@ page 90012 "NDC-FactBoxArea"{
     {
         area(content)
         {
-            usercontrol(SummaryLog; "NDC-SummaryLog")
-            {
+            usercontrol(SummaryLog; "NDC-SummaryLog"){
                 ApplicationArea = All;
                 trigger ControlReady()
                     begin
                         CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount());
+                    end;
+            }usercontrol(InteractivMap; "NDC-InteractiveMap"){
+                ApplicationArea = All;
+                trigger ControlReady()
+                    begin
+                        CurrPage.InteractivMap.showMap(PrepareDataMap());
                     end;
             }
         }
@@ -47,6 +52,18 @@ page 90012 "NDC-FactBoxArea"{
             jsonObject.Add('totalInvoice',TotalCount);
             jsonObject.Add('successInvoice',SuccessCount);
             jsonObject.Add('failInvoice',FailCount);
+            jsonArray.Add(jsonObject);
+            jsonArray.WriteTo(ResultArray);
+            exit(ResultArray);
+        end;
+
+    local procedure PrepareDataMap()ResultArray: Text
+        var
+            jsonObject: JsonObject;
+            jsonArray: JsonArray;
+        begin
+            jsonObject.Add('Latitude','13.7563');
+            jsonObject.Add('Longitude','100.5018');
             jsonArray.Add(jsonObject);
             jsonArray.WriteTo(ResultArray);
             exit(ResultArray);

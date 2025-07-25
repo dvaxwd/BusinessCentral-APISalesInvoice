@@ -1,5 +1,5 @@
 controladdin "NDC-SummaryLog"{
-    RequestedHeight = 500;
+    RequestedHeight = 200;
     RequestedWidth = 300;
     VerticalStretch = true;
     HorizontalStretch = true;

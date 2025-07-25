@@ -2,8 +2,6 @@ Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('controlReady', [], false)
 
 // ***** This function is main function to render summary area. *****
 async function LoadSummaryData(ResultArray) {
-    console.log('Load Summary Data');
-    console.log(ResultArray);
     document.getElementById("controlAddIn").innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
         <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
