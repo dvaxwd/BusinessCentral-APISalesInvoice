@@ -86,7 +86,7 @@ page 90012 "NDC-FactBoxArea"
                     if AmountPerRetail.ContainsKey(data.Code) then
                         jsonObject.Add('totalAmount', AmountPerRetail.Get(data.Code))
                     else 
-                        jsonObject.Add('totalAmount', 0);
+                        jsonObject.Add('totalAmount', 0.0);
                         
                     if SummaryCount.Count() = 3 then begin
                         jsonObject.Add('totalInvoice', SummaryCount.Get(1));
