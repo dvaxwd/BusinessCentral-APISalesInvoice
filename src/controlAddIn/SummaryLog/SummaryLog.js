@@ -2,10 +2,15 @@ Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('controlReady', [], false)
 
 // ***** This function is main function to render summary area. *****
 async function LoadSummaryData(ResultArray) {
-    document.getElementById("controlAddIn").innerHTML = `
+    const controlAddIn = document.getElementById("controlAddIn");
+    controlAddIn.innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
         <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
     `;
+    // document.getElementById("controlAddIn").innerHTML = `
+    //     <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
+    //     <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
+    // `;
     const filterArea = document.getElementById("filterArea");
     const cardArea = document.getElementById("cardArea");
 
@@ -13,7 +18,7 @@ async function LoadSummaryData(ResultArray) {
     await LoadSummaryCard(cardArea, ResultArray);
 }
 
-// // ***** This function is used to generate summary card and inject into target area *****
+// ***** This function is used to generate summary card and inject into target area *****
 async function LoadSummaryCard(targetElement, ResultArray) {
     try {
         const data = JSON.parse(ResultArray);
@@ -158,4 +163,10 @@ function CreateMonthDropdown(targetElement){
     dropDown.appendChild(menu);
 
     targetElement.appendChild(dropDown);
+}
+
+// ***** This function is used to generate summary card and inject into target area after get apply filter *****
+async function LoadSummaryApplyFilter(ResultArray){
+    const cardArea = document.getElementById("cardArea");
+    LoadSummaryCard(cardArea, ResultArray);
 }

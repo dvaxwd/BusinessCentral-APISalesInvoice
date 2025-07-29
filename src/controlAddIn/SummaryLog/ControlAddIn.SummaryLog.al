@@ -10,9 +10,10 @@ controladdin "NDC-SummaryLog"{
     StartupScript = 'SummaryLog.js';
     
 
-    event controlReady()    
+    event controlReady()
+    event OnYearSelected(YearText: Text)
+    event OnMonthSelected(MonthText: Text)
 
     procedure LoadSummaryData(ResultArray: Text)
-    procedure OnYearSelected(YearText: Text)
-    procedure OnMonthSelected(MonthText: Text)
+    procedure LoadSummaryApplyFilter(ResultArray: Text)
 }

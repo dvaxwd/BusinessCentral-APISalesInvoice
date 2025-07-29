@@ -2,7 +2,7 @@ page 90012 "NDC-FactBoxArea"
 {
     PageType = CardPart;
     ApplicationArea = All;
-    SourceTable = Customer;
+    SourceTable = "NDC-SalesInvoicesPostLog";
 
     layout
     {
@@ -12,9 +12,19 @@ page 90012 "NDC-FactBoxArea"
             {
                 ApplicationArea = All;
                 trigger ControlReady()
-                begin
-                    CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount());
-                end;
+                    begin
+                        CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter,MonthFilter));
+                    end;
+                trigger OnYearSelected(YearText: Text)
+                    begin
+                        Evaluate(YearFilter, YearText);
+                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                    end;
+                trigger OnMonthSelected(MonthText: Text)
+                    begin
+                        Evaluate(MonthFilter, MonthText);
+                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                    end;
             }
             usercontrol(InteractivMap; "NDC-InteractiveMap")
             {
@@ -26,40 +36,74 @@ page 90012 "NDC-FactBoxArea"
             }
         }
     }
-
-    local procedure PrepareDataCount() ResultArray: Text
-    var
-        LogRec: Record "NDC-SalesInvoicesPostLog";
-        jsonArray: JsonArray;
-        jsonObject: JsonObject;
-        TotalCount: Integer;
-        SuccessCount: Integer;
-        FailCount: Integer;
-    begin
-        Clear(jsonArray);
-        Clear(jsonObject);
-        TotalCount := 0;
-        SuccessCount := 0;
-        FailCount := 0;
-
-        if LogRec.FindSet() then begin
-            repeat
-                TotalCount += 1;
-                case LogRec."Post Status" of
-                    LogRec."Post Status"::Success:
-                        SuccessCount += 1;
-                    LogRec."Post Status"::Fail:
-                        FailCount += 1;
-                end;
-            until LogRec.Next() = 0;
+    
+    trigger OnOpenPage()
+        begin
+            YearFilter := 0;
+            MonthFilter := 0;
         end;
-        jsonObject.Add('totalInvoice', TotalCount);
-        jsonObject.Add('successInvoice', SuccessCount);
-        jsonObject.Add('failInvoice', FailCount);
-        jsonArray.Add(jsonObject);
-        jsonArray.WriteTo(ResultArray);
-        exit(ResultArray);
-    end;
+
+    var
+        YearFilter: Integer;
+        MonthFilter: Integer;
+
+    local procedure PrepareDataCount(Year: Integer; Month: Integer) ResultArray: Text
+        var
+            LogRec: Record "NDC-SalesInvoicesPostLog";
+            jsonArray: JsonArray;
+            jsonObject: JsonObject;
+            TotalCount: Integer;
+            SuccessCount: Integer;
+            FailCount: Integer;
+            StartDateTime, EndDateTime: DateTime;
+        begin
+            Clear(jsonArray);
+            Clear(jsonObject);
+            TotalCount := 0;
+            SuccessCount := 0;
+            FailCount := 0;
+
+            if (Year <> 0) then begin
+                if (Month <> 0) then begin
+                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
+                    if Month = 12 then
+                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
+                    else
+                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
+                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+                end else begin
+                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
+                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+                end;
+            end else begin
+                if (Month <> 0) then begin
+                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(),3)), 000000T);
+                    if Month = 12 then
+                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(),3) + 1), 000000T)
+                    else
+                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
+                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
+                end;
+            end;
+            if LogRec.FindSet() then begin
+                repeat
+                    TotalCount += 1;
+                    case LogRec."Post Status" of
+                        LogRec."Post Status"::Success:
+                            SuccessCount += 1;
+                        LogRec."Post Status"::Fail:
+                            FailCount += 1;
+                    end;
+                until LogRec.Next() = 0;
+            end;
+            jsonObject.Add('totalInvoice', TotalCount);
+            jsonObject.Add('successInvoice', SuccessCount);
+            jsonObject.Add('failInvoice', FailCount);
+            jsonArray.Add(jsonObject);
+            jsonArray.WriteTo(ResultArray);
+            exit(ResultArray);
+        end;
 
     local procedure PrepareDataMap() ResultArray: Text
     var
