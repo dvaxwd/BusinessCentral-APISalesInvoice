@@ -29,19 +29,22 @@ table 90007 "NDC-SalesInvoicesPostLog"
         {
             Caption = 'Location Name';
         }
-        field(7; "Post Status"; Enum "NDC-PostStatus")
+        field(7; Amount; Decimal){
+            Caption = 'Amount';
+        }
+        field(8; "Post Status"; Enum "NDC-PostStatus")
         {
             Caption = 'Post Status';
         }
-        field(8; "Error Message"; Text[1000])
+        field(9; "Error Message"; Text[1000])
         {
             Caption = 'Error Message';
         }
-        field(9; "Post Attempt DateTime"; DateTime)
+        field(10; "Post Attempt DateTime"; DateTime)
         {
             Caption = 'Post Attempt Date/Time';
         }
-        field(10; "Transaction ID"; Guid)
+        field(11; "Transaction ID"; Guid)
         {
             Caption = 'Transaction ID';
         }
