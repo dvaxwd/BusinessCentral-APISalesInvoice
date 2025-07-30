@@ -19,11 +19,13 @@ page 90012 "NDC-FactBoxArea"
                     begin
                         Evaluate(YearFilter, YearText);
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                     end;
                 trigger OnMonthSelected(MonthText: Text)
                     begin
                         Evaluate(MonthFilter, MonthText);
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                     end;
             }
             usercontrol(InteractivMap; "NDC-InteractiveMap")

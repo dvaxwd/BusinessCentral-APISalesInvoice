@@ -5,17 +5,19 @@ async function LoadSummaryData(ResultArray) {
     const controlAddIn = document.getElementById("controlAddIn");
     controlAddIn.innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
-        <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
+        <div class="row d-flex justify-content-evenly mb-2 h-auto" id="cardArea"></div>
+        <div class="row d-flex justify-content-evenly h-100">
+            <div class="col-6" id="chartArea"></div>
+            <div class="col-5 bg-success">top fail</div>
+        </div>
     `;
-    // document.getElementById("controlAddIn").innerHTML = `
-    //     <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
-    //     <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
-    // `;
     const filterArea = document.getElementById("filterArea");
     const cardArea = document.getElementById("cardArea");
+    const chartArea = document.getElementById("chartArea")
 
     await FilterManagement(filterArea);
     await LoadSummaryCard(cardArea, ResultArray);
+    await LoadPieChart(chartArea, ResultArray);
 }
 
 // ***** This function is used to generate summary card and inject into target area *****
@@ -169,4 +171,130 @@ function CreateMonthDropdown(targetElement){
 async function LoadSummaryApplyFilter(ResultArray){
     const cardArea = document.getElementById("cardArea");
     LoadSummaryCard(cardArea, ResultArray);
+}
+
+async function LoadPieChart(targetElement, ResultArray) {
+    const canvas = document.createElement("canvas");
+    canvas.className = "p-3"
+    canvas.id = "pieChartCanvas";
+    canvas.style.maxWidth = "100%";
+    canvas.style.maxHeight = "300px";
+    targetElement.innerHTML = '';
+    targetElement.appendChild(canvas);
+
+    const invoiceRatio = CalInvoiceRatio(ResultArray);
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Success', 'Fail'],
+            datasets: [{
+                data: [invoiceRatio[0], invoiceRatio[1]],
+                backgroundColor: [
+                    'rgb(25, 135, 84)',
+                    'rgb(220, 53, 69)',
+                ],
+                borderColor: '#fff',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: {
+                            weight: 'bold',
+                            color: '#000000'
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.toFixed(2)}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function LoadPieChartApplyFilter(dataArray){
+    try {
+        const chartArea = document.getElementById("chartArea");
+        const data = JSON.parse(dataArray);
+        if(Array.isArray(data)){
+            const obj = data[0];
+            if((obj['successInvoice'] === 0) && (obj['failInvoice'] === 0)){
+                console.log('not found : ', obj)
+                createNotFoundFilterElement(chartArea);
+            }else{
+                console.log('found : ', obj)
+                LoadPieChart(chartArea,dataArray);
+            }
+        }
+    }catch(error){
+        console.log(error);
+    }
+}
+
+function CalInvoiceRatio(ResultArray){
+    try{
+        let successInvoice, failInvoice ;
+        const data = JSON.parse(ResultArray)
+        if(Array.isArray(data)){
+            const obj = data[0];
+            Object.keys(obj).forEach((key) => {
+                switch (key) {
+                    case 'successInvoice':
+                        successInvoice = obj[key]*100/obj['totalInvoice']
+                        break;
+                    case 'failInvoice':
+                        failInvoice = obj[key]*100/obj['totalInvoice']
+                        break;
+                }
+            })
+        }
+        return[successInvoice,failInvoice] 
+    }catch(error){
+        console.log(error);
+    }
+}
+
+async function createNotFoundFilterElement(targetElement){
+    targetElement.innerHTML = ``;
+
+    const spinnerRow = document.createElement("div");
+    spinnerRow.className = "row d-flex justify-content-center mt-5 mb-3 pt-5";
+
+    const spinnerGrow = document.createElement("div");
+    spinnerGrow.className = "spinner-grow spinner-grow-sm text-primary";
+    spinnerGrow.role = "status";
+    spinnerGrow.style = "width: 1.5rem; height: 1.5rem;";
+
+    const spanVisual = document.createElement("span");
+    spanVisual.className = "visually-hidden";
+
+    spinnerGrow.appendChild(spanVisual);
+    spinnerRow.appendChild(spinnerGrow);
+
+    const message = document.createElement("div");
+    message.className = "row d-flex justify-content-center mb-1";
+    message.textContent = 'No Invoice';
+
+    const tips = document.createElement("div");
+    tips.className = "row d-flex justify-content-center";
+
+    const small = document.createElement("small");
+    small.className = "text-center";
+    small.textContent = 'Try adjusting filters to see more results.';
+
+    tips.appendChild(small);
+
+    targetElement.appendChild(spinnerRow);
+    targetElement.appendChild(message);
+    targetElement.appendChild(tips);
 }
