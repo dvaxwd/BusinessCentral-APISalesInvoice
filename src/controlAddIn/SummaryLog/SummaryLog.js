@@ -1,23 +1,33 @@
 Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('controlReady', [], false)
 
 // ***** This function is main function to render summary area. *****
-async function LoadSummaryData(ResultArray) {
+async function LoadSummaryData(ResultArray, failReasonArray) {
     const controlAddIn = document.getElementById("controlAddIn");
     controlAddIn.innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
-        <div class="row d-flex justify-content-evenly mb-2 h-auto" id="cardArea"></div>
+        <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
         <div class="row d-flex justify-content-evenly h-100">
             <div class="col-6" id="chartArea"></div>
-            <div class="col-5 bg-success">top fail</div>
+            <div class="col-5 px-0 py-3">
+                <div class="row mb-2">
+                    <p class="h6">
+                        <em class="font-weight-bold">Top Failure Reasons</em>
+                    </p>
+                </div>
+                <div class="row px-4" id="failCardArea">
+                </div>
+            </div>
         </div>
     `;
     const filterArea = document.getElementById("filterArea");
     const cardArea = document.getElementById("cardArea");
-    const chartArea = document.getElementById("chartArea")
+    const chartArea = document.getElementById("chartArea");
+    const failCardArea = document.getElementById("failCardArea");
 
     await FilterManagement(filterArea);
     await LoadSummaryCard(cardArea, ResultArray);
     await LoadPieChart(chartArea, ResultArray);
+    await LoadFailReasonCard(failCardArea, failReasonArray);
 }
 
 // ***** This function is used to generate summary card and inject into target area *****
@@ -55,8 +65,13 @@ async function CreateCard(targetElement,header, amount, style) {
     card.className = `card col-auto m-2 px-0 h-auto shadow border border-${style}`;
 
     const cardHeader = document.createElement("div");
-    cardHeader.className = `card-header px-3 text-start text-white fw-semibold bg-${style}`;
-    cardHeader.textContent = header;
+    cardHeader.className = `card-header px-3 bg-${style}`;
+
+    const em = document.createElement("em");
+    em.className = "text-start text-white fw-semibold";
+    em.textContent = header;
+
+    cardHeader.appendChild(em);
 
     const cardBody = document.createElement("div");
     cardBody.className = "card-body px-4";
@@ -297,4 +312,32 @@ async function createNotFoundFilterElement(targetElement){
     targetElement.appendChild(spinnerRow);
     targetElement.appendChild(message);
     targetElement.appendChild(tips);
+}
+
+async function LoadFailReasonCard(targetElement, dataArray){
+    try {
+        const data = JSON.parse(dataArray);
+        if(Array.isArray(data)){
+            if(data.length > 0){
+                console.log(typeof(data));
+                data.sort((a,b) => b.count - a.count);
+                targetElement.innerHTML = ``;
+                data.forEach(item => {
+                    const button = document.createElement("button");
+                    button.className = "btn btn-outline-dark shadow position-relative mb-2";
+                    button.type = button;
+                    button.textContent = item.reason;
+
+                    const span = document.createElement("span");
+                    span.className = "position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger";
+                    span.textContent = item.count;
+
+                    button.appendChild(span);
+                    targetElement.appendChild(button);
+                });
+            }
+        }
+    }catch(error){
+        console.log(error);   
+    }
 }

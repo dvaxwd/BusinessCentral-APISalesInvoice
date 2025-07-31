@@ -13,7 +13,7 @@ page 90012 "NDC-FactBoxArea"
                 ApplicationArea = All;
                 trigger ControlReady()
                     begin
-                        CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter,MonthFilter));
+                        CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter,MonthFilter), SummaryCountFailReason());
                     end;
                 trigger OnYearSelected(YearText: Text)
                     begin
@@ -203,4 +203,48 @@ page 90012 "NDC-FactBoxArea"
         end;
         exit(Result);
     end;
+
+    local procedure SummaryCountFailReason() Result: Text
+        var
+            jsonArray: JsonArray;
+            jsonObject: JsonObject;
+            LogRec: Record "NDC-SalesInvoicesPostLog";
+            SummaryDict: Dictionary of [Text, Integer];
+            TempKey: Text;
+            PairKey: Text;
+            PairValue: Integer;
+        begin
+            LogRec.SetRange("Post Status",LogRec."Post Status"::Fail);
+            if LogRec.FindSet() then begin
+                SummaryDict.Add('Lot assignment incomplete', 0);
+                SummaryDict.Add('No available lot found', 0);
+                SummaryDict.Add('Required serial no', 0);
+                SummaryDict.Add('Over quantity', 0);
+                SummaryDict.Add('Not found Serial', 0);
+                repeat
+                    if LogRec."Error Message".Contains('Lot') then
+                        SummaryDict.Set('Lot assignment incomplete',SummaryDict.Get('Lot assignment incomplete') + 1);
+
+                    if LogRec."Error Message".Contains('location') then
+                        SummaryDict.Set('No available lot found', SummaryDict.Get('No available lot found') + 1);
+                    
+                    if LogRec."Error Message".Contains('required') then
+                        SummaryDict.Set('Required serial no', SummaryDict.Get('Required serial no') + 1);
+
+                    if LogRec."Error Message".Contains('Quantity') then
+                        SummaryDict.Set('Over quantity', SummaryDict.Get('Over quantity') + 1);
+                    
+                    if LogRec."Error Message".Contains('Not') then
+                        SummaryDict.Set('Not found Serial', SummaryDict.Get('Not found Serial') + 1);
+                until LogRec.Next() = 0;
+            end;
+            foreach PairKey in SummaryDict.Keys do begin
+                Clear(jsonObject);
+                PairValue := SummaryDict.Get(PairKey);
+                jsonObject.Add('reason', PairKey);
+                jsonObject.Add('count', PairValue);
+                jsonArray.Add(jsonObject);
+            end;
+            jsonArray.WriteTo(Result);
+        end;
 }

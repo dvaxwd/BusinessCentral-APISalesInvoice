@@ -15,7 +15,7 @@ controladdin "NDC-SummaryLog"{
     event OnYearSelected(YearText: Text)
     event OnMonthSelected(MonthText: Text)
 
-    procedure LoadSummaryData(ResultArray: Text)
+    procedure LoadSummaryData(ResultArray: Text; failSummary: Text)
     procedure LoadSummaryApplyFilter(ResultArray: Text)
     procedure LoadPieChartApplyFilter(ResultArray: Text)
 }
