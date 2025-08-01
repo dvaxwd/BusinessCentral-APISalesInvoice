@@ -1,7 +1,7 @@
 Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('controlReady', [], false)
 
 // ***** This function is main function to render summary area. *****
-async function LoadSummaryData(ResultArray, failReasonArray) {
+async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
     const controlAddIn = document.getElementById("controlAddIn");
     controlAddIn.innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
@@ -36,13 +36,13 @@ async function LoadSummaryData(ResultArray, failReasonArray) {
     const failCardArea = document.getElementById("failCardArea");
 
     await FilterManagement(filterArea);
-    await LoadSummaryCard(cardArea, ResultArray);
+    await LoadSummaryCard(cardArea, ResultArray, FormatDateFormular(lastUpdate));
     await LoadPieChart(chartArea, ResultArray);
     await LoadFailReasonCard(failCardArea, failReasonArray);
 }
 
 // ***** This function is used to generate summary card and inject into target area *****
-async function LoadSummaryCard(targetElement, ResultArray) {
+async function LoadSummaryCard(targetElement, ResultArray, lastUpdate) {
     try {
         const data = JSON.parse(ResultArray);
         if (Array.isArray(data)) {
@@ -51,13 +51,13 @@ async function LoadSummaryCard(targetElement, ResultArray) {
             Object.keys(obj).forEach((key) => {
                 switch (key) {
                     case 'totalInvoice':
-                        CreateCard(targetElement, 'Total Invoice', obj[key], 'primary');
+                        CreateCard(targetElement, 'Total Invoice', obj[key], 'primary', lastUpdate);
                         break;
                     case 'successInvoice':
-                        CreateCard(targetElement, 'Success Invoice', obj[key], 'success');
+                        CreateCard(targetElement, 'Success Invoice', obj[key], 'success', lastUpdate);
                         break;
                     case 'failInvoice':
-                        CreateCard(targetElement, 'Fail Invoice', obj[key], 'danger');
+                        CreateCard(targetElement, 'Fail Invoice', obj[key], 'danger', lastUpdate);
                         break;
                 }
             })
@@ -71,7 +71,7 @@ async function LoadSummaryCard(targetElement, ResultArray) {
 }
 
 // ***** This function is used to create card *****
-async function CreateCard(targetElement,header, amount, style) {
+async function CreateCard(targetElement,header, amount, style , lastUpdate) {
     const card = document.createElement("div");
     card.className = `card col-auto m-2 px-0 h-auto shadow border border-${style}`;
 
@@ -96,7 +96,7 @@ async function CreateCard(targetElement,header, amount, style) {
 
     const small = document.createElement("small");
     small.className = "text-body-secondary text-center"
-    small.textContent = `Last updated today`;
+    small.textContent = lastUpdate;
 
     cardText.appendChild(small);
     cardBody.appendChild(cardTitle);
@@ -194,9 +194,9 @@ function CreateMonthDropdown(targetElement){
 }
 
 // ***** This function is used to generate summary card and inject into target area after get apply filter *****
-async function LoadSummaryApplyFilter(ResultArray){
+async function LoadSummaryApplyFilter(ResultArray, lastUpdate){
     const cardArea = document.getElementById("cardArea");
-    LoadSummaryCard(cardArea, ResultArray);
+    LoadSummaryCard(cardArea, ResultArray, FormatDateFormular(lastUpdate));
 }
 
 async function LoadPieChart(targetElement, ResultArray) {
@@ -458,3 +458,43 @@ async function LoadInvoiceTable(dataArray){
         console.log(error);
     }
 }
+
+function FormatDateFormular(lastUpdate) {
+    try {
+        const data = JSON.parse(lastUpdate);
+        const obj = data[0];
+        let updated = obj.lastUpdate;
+
+        if (updated === "today") return "Updated today";
+
+        // regex match ตัวเลขตามด้วยตัวอักษร D/W/M/Y
+        const match = updated.match(/^(\d+)([DWMY])/);
+
+        if (match) {
+            const number = parseInt(match[1]);
+            const unit = match[2];
+
+            if (number === 1) {
+                switch (unit) {
+                    case 'D': return 'Updated yesterday';
+                    case 'W': return 'Updated last week';
+                    case 'M': return 'Updated month';
+                    case 'Y': return 'Updated year';
+                }
+            } else {
+                switch (unit) {
+                    case 'D': return `Updated ${number} days ago`;
+                    case 'W': return `Updated ${number} weeks ago`;
+                    case 'M': return `Updated ${number} months ago`;
+                    case 'Y': return `Updated ${number} years ago`;
+                }
+            }
+        }
+
+        return updated; // fallback ถ้าไม่ตรง pattern
+    } catch (error) {
+        console.log(error);
+        return '';
+    }
+}
+

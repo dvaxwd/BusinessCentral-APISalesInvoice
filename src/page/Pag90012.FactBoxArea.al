@@ -12,98 +12,101 @@ page 90012 "NDC-FactBoxArea"
             {
                 ApplicationArea = All;
                 trigger ControlReady()
-                    begin
-                        CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter,MonthFilter), SummaryCountFailReason());
-                        CurrPage.SummaryLog.showMap(PrepareDataMap());
-                        CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice());
-                    end;
+                begin
+                    CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(), CalLastUpdate());
+                    CurrPage.SummaryLog.showMap(PrepareDataMap());
+                    CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice());
+                end;
+
                 trigger OnYearSelected(YearText: Text)
-                    begin
-                        Evaluate(YearFilter, YearText);
-                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
-                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
-                    end;
+                begin
+                    Evaluate(YearFilter, YearText);
+                    CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
+                    CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                end;
+
                 trigger OnMonthSelected(MonthText: Text)
-                    begin
-                        Evaluate(MonthFilter, MonthText);
-                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
-                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
-                    end;
+                begin
+                    Evaluate(MonthFilter, MonthText);
+                    CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
+                    CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                end;
+
                 trigger OpenInvoice(InvoicceNo: Text)
-                    begin
-                        OpenSaleInvoice(InvoicceNo);
-                    end;
+                begin
+                    OpenSaleInvoice(InvoicceNo);
+                end;
             }
         }
     }
-    
+
     trigger OnOpenPage()
-        begin
-            YearFilter := 0;
-            MonthFilter := 0;
-        end;
+    begin
+        YearFilter := 0;
+        MonthFilter := 0;
+    end;
 
     var
         YearFilter: Integer;
         MonthFilter: Integer;
 
     local procedure PrepareDataCount(Year: Integer; Month: Integer) ResultArray: Text
-        var
-            LogRec: Record "NDC-SalesInvoicesPostLog";
-            jsonArray: JsonArray;
-            jsonObject: JsonObject;
-            TotalCount: Integer;
-            SuccessCount: Integer;
-            FailCount: Integer;
-            StartDateTime, EndDateTime: DateTime;
-        begin
-            Clear(jsonArray);
-            Clear(jsonObject);
-            TotalCount := 0;
-            SuccessCount := 0;
-            FailCount := 0;
+    var
+        LogRec: Record "NDC-SalesInvoicesPostLog";
+        jsonArray: JsonArray;
+        jsonObject: JsonObject;
+        TotalCount: Integer;
+        SuccessCount: Integer;
+        FailCount: Integer;
+        StartDateTime, EndDateTime : DateTime;
+    begin
+        Clear(jsonArray);
+        Clear(jsonObject);
+        TotalCount := 0;
+        SuccessCount := 0;
+        FailCount := 0;
 
-            if (Year <> 0) then begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end else begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
-                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end;
+        if (Year <> 0) then begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
             end else begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(),3)), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(),3) + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
-                end;
+                StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
+                EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
             end;
-            if LogRec.FindSet() then begin
-                repeat
-                    TotalCount += 1;
-                    case LogRec."Post Status" of
-                        LogRec."Post Status"::Success:
-                            SuccessCount += 1;
-                        LogRec."Post Status"::Fail:
-                            FailCount += 1;
-                    end;
-                until LogRec.Next() = 0;
+        end else begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
             end;
-            jsonObject.Add('totalInvoice', TotalCount);
-            jsonObject.Add('successInvoice', SuccessCount);
-            jsonObject.Add('failInvoice', FailCount);
-            jsonArray.Add(jsonObject);
-            jsonArray.WriteTo(ResultArray);
-            exit(ResultArray);
         end;
+        if LogRec.FindSet() then begin
+            repeat
+                TotalCount += 1;
+                case LogRec."Post Status" of
+                    LogRec."Post Status"::Success:
+                        SuccessCount += 1;
+                    LogRec."Post Status"::Fail:
+                        FailCount += 1;
+                end;
+            until LogRec.Next() = 0;
+        end;
+        jsonObject.Add('totalInvoice', TotalCount);
+        jsonObject.Add('successInvoice', SuccessCount);
+        jsonObject.Add('failInvoice', FailCount);
+        jsonArray.Add(jsonObject);
+        jsonArray.WriteTo(ResultArray);
+        exit(ResultArray);
+    end;
 
     local procedure PrepareDataMap() ResultArray: Text
     var
@@ -129,9 +132,9 @@ page 90012 "NDC-FactBoxArea"
                     jsonObject.Add('retailName', data.Name);
                     if AmountPerRetail.ContainsKey(data.Code) then
                         jsonObject.Add('totalAmount', AmountPerRetail.Get(data.Code))
-                    else 
+                    else
                         jsonObject.Add('totalAmount', 0.0);
-                        
+
                     if SummaryCount.Count() = 3 then begin
                         jsonObject.Add('totalInvoice', SummaryCount.Get(1));
                         jsonObject.Add('successInvoice', SummaryCount.Get(2));
@@ -203,75 +206,110 @@ page 90012 "NDC-FactBoxArea"
     end;
 
     local procedure SummaryCountFailReason() Result: Text
-        var
-            jsonArray: JsonArray;
-            jsonObject: JsonObject;
-            LogRec: Record "NDC-SalesInvoicesPostLog";
-            SummaryDict: Dictionary of [Text, Integer];
-            TempKey: Text;
-            PairKey: Text;
-            PairValue: Integer;
-        begin
-            LogRec.SetRange("Post Status",LogRec."Post Status"::Fail);
-            if LogRec.FindSet() then begin
-                SummaryDict.Add('Lot assignment incomplete', 0);
-                SummaryDict.Add('No available lot found', 0);
-                SummaryDict.Add('Required serial no', 0);
-                SummaryDict.Add('Over quantity', 0);
-                SummaryDict.Add('Not found Serial', 0);
-                repeat
-                    if LogRec."Error Message".Contains('Lot') then
-                        SummaryDict.Set('Lot assignment incomplete',SummaryDict.Get('Lot assignment incomplete') + 1);
+    var
+        jsonArray: JsonArray;
+        jsonObject: JsonObject;
+        LogRec: Record "NDC-SalesInvoicesPostLog";
+        SummaryDict: Dictionary of [Text, Integer];
+        TempKey: Text;
+        PairKey: Text;
+        PairValue: Integer;
+    begin
+        LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+        if LogRec.FindSet() then begin
+            SummaryDict.Add('Lot assignment incomplete', 0);
+            SummaryDict.Add('No available lot found', 0);
+            SummaryDict.Add('Required serial no', 0);
+            SummaryDict.Add('Over quantity', 0);
+            SummaryDict.Add('Not found Serial', 0);
+            repeat
+                if LogRec."Error Message".Contains('Lot') then
+                    SummaryDict.Set('Lot assignment incomplete', SummaryDict.Get('Lot assignment incomplete') + 1);
 
-                    if LogRec."Error Message".Contains('location') then
-                        SummaryDict.Set('No available lot found', SummaryDict.Get('No available lot found') + 1);
-                    
-                    if LogRec."Error Message".Contains('required') then
-                        SummaryDict.Set('Required serial no', SummaryDict.Get('Required serial no') + 1);
+                if LogRec."Error Message".Contains('location') then
+                    SummaryDict.Set('No available lot found', SummaryDict.Get('No available lot found') + 1);
 
-                    if LogRec."Error Message".Contains('Quantity') then
-                        SummaryDict.Set('Over quantity', SummaryDict.Get('Over quantity') + 1);
-                    
-                    if LogRec."Error Message".Contains('Not') then
-                        SummaryDict.Set('Not found Serial', SummaryDict.Get('Not found Serial') + 1);
-                until LogRec.Next() = 0;
-            end;
-            foreach PairKey in SummaryDict.Keys do begin
-                Clear(jsonObject);
-                PairValue := SummaryDict.Get(PairKey);
-                jsonObject.Add('reason', PairKey);
-                jsonObject.Add('count', PairValue);
-                jsonArray.Add(jsonObject);
-            end;
-            jsonArray.WriteTo(Result);
+                if LogRec."Error Message".Contains('required') then
+                    SummaryDict.Set('Required serial no', SummaryDict.Get('Required serial no') + 1);
+
+                if LogRec."Error Message".Contains('Quantity') then
+                    SummaryDict.Set('Over quantity', SummaryDict.Get('Over quantity') + 1);
+
+                if LogRec."Error Message".Contains('Not') then
+                    SummaryDict.Set('Not found Serial', SummaryDict.Get('Not found Serial') + 1);
+            until LogRec.Next() = 0;
         end;
-
-    local procedure PrepareDataFailInvoice()Result: Text
-        var
-            LogRec: Record "NDC-SalesInvoicesPostLog";
-            JsonArray: JsonArray;
-            JsonObject: JsonObject;
-        begin
-            LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
-            if LogRec.FindSet() then begin
-                repeat
-                    Clear(JsonObject);
-                    JsonObject.Add('invoiceNo', LogRec."Invoice No.");
-                    JsonObject.Add('retailName', LogRec."Location Name");
-                    JsonObject.Add('errorMessage', LogRec."Error Message");
-                    JsonArray.Add(JsonObject);
-                until LogRec.Next() =  0
-            end;
-            JsonArray.WriteTo(Result);
+        foreach PairKey in SummaryDict.Keys do begin
+            Clear(jsonObject);
+            PairValue := SummaryDict.Get(PairKey);
+            jsonObject.Add('reason', PairKey);
+            jsonObject.Add('count', PairValue);
+            jsonArray.Add(jsonObject);
         end;
+        jsonArray.WriteTo(Result);
+    end;
 
+    // This procedure
+    local procedure PrepareDataFailInvoice() Result: Text
+    var
+        LogRec: Record "NDC-SalesInvoicesPostLog";
+        JsonArray: JsonArray;
+        JsonObject: JsonObject;
+    begin
+        LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+        if LogRec.FindSet() then begin
+            repeat
+                Clear(JsonObject);
+                JsonObject.Add('invoiceNo', LogRec."Invoice No.");
+                JsonObject.Add('retailName', LogRec."Location Name");
+                JsonObject.Add('errorMessage', LogRec."Error Message");
+                JsonArray.Add(JsonObject);
+            until LogRec.Next() = 0
+        end;
+        JsonArray.WriteTo(Result);
+    end;
+
+    // This procedure is used to open sale invoice
     local procedure OpenSaleInvoice(InvoiceNo: Code[20])
+    var
+        SaleInvRec: Record "Sales Header";
+    begin
+        SaleInvRec.SetRange("No.", InvoiceNo);
+        SaleInvRec.SetRange("Document Type", SaleInvRec."Document Type"::Invoice);
+        if SaleInvRec.FindFirst() then
+            PAGE.Run(PAGE::"Sales Invoice", SaleInvRec);
+    end;
+
+    // This procedure is used to
+    local procedure CalLastUpdate()Result: Text;
         var
-            SaleInvRec: Record "Sales Header";
+            LogRec: Record "NDC-SalesInvoicesPostLog";
+            jsonObject: JsonObject;
+            jsonArray: JsonArray;
+            lastUpdate: Date;
+            DateDiff: Integer;
+            DateFomular: Text;
         begin
-            SaleInvRec.SetRange("No.", InvoiceNo);
-            SaleInvRec.SetRange("Document Type", SaleInvRec."Document Type"::Invoice);
-            if SaleInvRec.FindFirst() then
-                PAGE.Run(PAGE::"Sales Invoice", SaleInvRec);
+            if LogRec.FindLast() then begin
+                lastUpdate := DT2Date(LogRec."Post Attempt DateTime");
+                DateDiff := Today() - lastUpdate;
+
+                if DateDiff = 0 then begin
+                    DateFomular := 'today'
+                end else begin
+                    if DateDiff < 7 then
+                        DateFomular := Format(DateDiff) + 'D ago'
+                    else if DateDiff < 30 then
+                        DateFomular := Format(DateDiff DIV 7) + 'W ago'
+                    else if DateDiff < 365 then
+                        DateFomular := Format(DateDiff DIV 30) + 'M ago'
+                    else
+                        DateFomular := Format(DateDiff DIV 365) + 'Y ago';
+                end;
+
+                jsonObject.Add('lastUpdate', DateFomular);
+                jsonArray.Add(jsonObject);
+                jsonArray.WriteTo(Result);
+            end;
         end;
 }

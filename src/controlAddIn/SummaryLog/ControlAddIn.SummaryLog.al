@@ -18,8 +18,8 @@ controladdin "NDC-SummaryLog"{
     event OnMonthSelected(MonthText: Text)
     event OpenInvoice(InvoicceNo: Text);
 
-    procedure LoadSummaryData(ResultArray: Text; failSummary: Text)
-    procedure LoadSummaryApplyFilter(ResultArray: Text)
+    procedure LoadSummaryData(ResultArray: Text; failSummary: Text; lastUpdate: Text)
+    procedure LoadSummaryApplyFilter(ResultArray: Text; lastUpdated: Text)
     procedure LoadPieChartApplyFilter(ResultArray: Text)
     procedure showMap(ResultArray: Text);
     procedure LoadInvoiceTable(ResultArray: Text)
