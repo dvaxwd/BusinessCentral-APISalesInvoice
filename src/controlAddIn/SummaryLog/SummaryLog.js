@@ -20,10 +20,15 @@ async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
         </div>
         <div class="row m-2 p-2 rounded shadow" id="mapArea" style="height: 480px;"></div>
         <div class="row h-100" id="linkPageArea">
-        <div class="row mt-4 mb-4" id="invoiceArea">
-            <h6>
-                <em class="font-weight-bold">View and Fix Sales Invoice</em>
-            </h6>  
+        <div class="row d-flex mt-4 mb-4 align-items-center" id="invoiceArea">
+            <div class="col-auto ms-2">
+                <h6>
+                    <em class="font-weight-bold">View and Fix Sales Invoice</em>
+                </h6>
+            </div>
+            <div class="col-auto px-0">
+                <i class="bi bi-tools fs-4"></i>  
+            </div>
         </div>
         <div class="row d-flex justify-content-center mx-1 h-100" >
             <div class="col-11 px-0 py-0 rounded shadow overflow-auto" id="invoiceTableArea" style="height: 360px;"></div>

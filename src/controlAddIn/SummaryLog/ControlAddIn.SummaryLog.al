@@ -8,8 +8,9 @@ controladdin "NDC-SummaryLog"{
              'https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js',
              'https://cdn.jsdelivr.net/npm/chart.js',
              'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    StyleSheets = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css', 
-                    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    StyleSheets = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css',
+                'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css', 
+                'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
     StartupScript = 'SummaryLog.js';
     
 
