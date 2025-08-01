@@ -14,6 +14,8 @@ page 90012 "NDC-FactBoxArea"
                 trigger ControlReady()
                     begin
                         CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter,MonthFilter), SummaryCountFailReason());
+                        CurrPage.SummaryLog.showMap(PrepareDataMap());
+                        CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice());
                     end;
                 trigger OnYearSelected(YearText: Text)
                     begin
@@ -27,14 +29,10 @@ page 90012 "NDC-FactBoxArea"
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                         CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                     end;
-            }
-            usercontrol(InteractivMap; "NDC-InteractiveMap")
-            {
-                ApplicationArea = All;
-                trigger ControlReady()
-                begin
-                    CurrPage.InteractivMap.showMap(PrepareDataMap());
-                end;
+                trigger OpenInvoice(InvoicceNo: Text)
+                    begin
+                        OpenSaleInvoice(InvoicceNo);
+                    end;
             }
         }
     }
@@ -246,5 +244,34 @@ page 90012 "NDC-FactBoxArea"
                 jsonArray.Add(jsonObject);
             end;
             jsonArray.WriteTo(Result);
+        end;
+
+    local procedure PrepareDataFailInvoice()Result: Text
+        var
+            LogRec: Record "NDC-SalesInvoicesPostLog";
+            JsonArray: JsonArray;
+            JsonObject: JsonObject;
+        begin
+            LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+            if LogRec.FindSet() then begin
+                repeat
+                    Clear(JsonObject);
+                    JsonObject.Add('invoiceNo', LogRec."Invoice No.");
+                    JsonObject.Add('retailName', LogRec."Location Name");
+                    JsonObject.Add('errorMessage', LogRec."Error Message");
+                    JsonArray.Add(JsonObject);
+                until LogRec.Next() =  0
+            end;
+            JsonArray.WriteTo(Result);
+        end;
+
+    local procedure OpenSaleInvoice(InvoiceNo: Code[20])
+        var
+            SaleInvRec: Record "Sales Header";
+        begin
+            SaleInvRec.SetRange("No.", InvoiceNo);
+            SaleInvRec.SetRange("Document Type", SaleInvRec."Document Type"::Invoice);
+            if SaleInvRec.FindFirst() then
+                PAGE.Run(PAGE::"Sales Invoice", SaleInvRec);
         end;
 }

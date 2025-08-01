@@ -6,7 +6,7 @@ async function LoadSummaryData(ResultArray, failReasonArray) {
     controlAddIn.innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
         <div class="row d-flex justify-content-evenly h-auto" id="cardArea"></div>
-        <div class="row d-flex justify-content-evenly h-100">
+        <div class="row d-flex justify-content-evenly h-auto">
             <div class="col-6" id="chartArea"></div>
             <div class="col-5 px-0 py-3">
                 <div class="row mb-2">
@@ -18,6 +18,17 @@ async function LoadSummaryData(ResultArray, failReasonArray) {
                 </div>
             </div>
         </div>
+        <div class="row m-2 p-2 rounded shadow" id="mapArea" style="height: 480px;"></div>
+        <div class="row h-100" id="linkPageArea">
+        <div class="row mt-4 mb-4" id="invoiceArea">
+            <h6>
+                <em class="font-weight-bold">View and Fix Sales Invoice</em>
+            </h6>  
+        </div>
+        <div class="row d-flex justify-content-center mx-1 h-100" >
+            <div class="col-11 px-0 py-0 rounded shadow overflow-auto" id="invoiceTableArea" style="height: 360px;"></div>
+        </div>  
+
     `;
     const filterArea = document.getElementById("filterArea");
     const cardArea = document.getElementById("cardArea");
@@ -319,7 +330,6 @@ async function LoadFailReasonCard(targetElement, dataArray){
         const data = JSON.parse(dataArray);
         if(Array.isArray(data)){
             if(data.length > 0){
-                console.log(typeof(data));
                 data.sort((a,b) => b.count - a.count);
                 targetElement.innerHTML = ``;
                 data.forEach(item => {
@@ -327,7 +337,12 @@ async function LoadFailReasonCard(targetElement, dataArray){
                     button.className = "btn btn-outline-dark shadow position-relative mb-2";
                     button.type = button;
                     button.textContent = item.reason;
-
+                    button.addEventListener("click", (e) => {
+                        const target = document.getElementById("invoiceArea");
+                        if (target) {
+                            target.scrollIntoView({ behavior: "smooth" });
+                        }
+                    })
                     const span = document.createElement("span");
                     span.className = "position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger";
                     span.textContent = item.count;
@@ -339,5 +354,107 @@ async function LoadFailReasonCard(targetElement, dataArray){
         }
     }catch(error){
         console.log(error);   
+    }
+}
+
+async function showMap(ResultArray) {
+    const data = JSON.parse(ResultArray);
+    let map;
+
+    const container = document.getElementById("mapArea");
+    if (!container.querySelector('#map')) {
+        container.innerHTML = `<div id="map" style="width:100%; height:100%;"></div>`;
+    }
+
+    if (!map) {
+        map = L.map('map').setView(['13.736717', '100.523186'], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const markerBounds = [];
+        data.forEach(item => {
+            const popupContent = `
+                <div style="text-align: center;">
+                    <strong>${item.retailName}</strong>
+                </div>
+                Amounts : ${item.totalAmount}<br>
+                Total invoices : ${item.totalInvoice}<br>
+                Success invoices : ${item.successInvoice}<br>
+                Fail invoices : ${item.failInvoice}
+            `;
+
+            L.marker([item['latitude'], item['longitude']])
+                .addTo(map)
+                .bindTooltip(popupContent, { permanent: false, direction: 'top' });
+
+            markerBounds.push([item['latitude'], item['longitude']])
+        });
+
+        if(markerBounds.length > 0){
+            map.fitBounds(markerBounds);
+        }
+    }else{
+        map = L.map('map').setView(['13.736717', '100.523186'], 13);
+        map.eachLayer(function (layer) {
+            if (layer instanceof L.Marker) {
+                map.removeLayer(layer);
+            }
+        });
+    }
+}
+
+async function LoadInvoiceTable(dataArray){
+    const targetElement = document.getElementById("invoiceTableArea");
+    try {
+       const data = JSON.parse(dataArray);
+        if(Array.isArray(data)){
+            const accordion = document.createElement("div");
+            accordion.className = "accordion";
+            accordion.id = "invoiceAccordion";
+
+            targetElement.innerHTML = ``;
+            data.forEach(item => {
+                const acdItem = document.createElement("div");
+                acdItem.className = "accordion-item";
+
+                const acdHeader = document.createElement("h2");
+                acdHeader.className = "accordion-header";
+
+                const acdButton = document.createElement("button");
+                acdButton.className = "accordion-button";
+                acdButton.type = "button";
+                acdButton.setAttribute("data-bs-toggle","collapse");
+                acdButton.setAttribute("data-bs-target",`#collapse-${item.invoiceNo}`);
+                acdButton.setAttribute("aria-expanded","true");
+                acdButton.setAttribute("aria-controls",`collapse-${item.invoiceNo}`)
+                acdButton.textContent = `${item.invoiceNo} | ${item.retailName}`;                
+
+                acdHeader.appendChild(acdButton);
+
+                const acdCollapse = document.createElement("div");
+                acdCollapse.className = "accordion-collapse collapse";
+                acdCollapse.id = `collapse-${item.invoiceNo}`
+                acdCollapse.setAttribute("data-bs-parent","#invoiceAccordion")
+
+                const acdBody = document.createElement("div");
+                acdBody.className = "accordion-body";
+                acdBody.textContent = item.errorMessage;
+                acdBody.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OpenInvoice', [item.invoiceNo]);
+                });
+
+                acdCollapse.appendChild(acdBody);
+
+                acdItem.appendChild(acdHeader);
+                acdItem.appendChild(acdCollapse);
+
+                accordion.appendChild(acdItem);
+            });
+            targetElement.appendChild(accordion);
+        }
+    }catch(error){
+        console.log(error);
     }
 }
