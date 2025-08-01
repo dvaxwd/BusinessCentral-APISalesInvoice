@@ -31,7 +31,7 @@ async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
             </div>
         </div>
         <div class="row d-flex justify-content-center mx-1 h-100" >
-            <div class="col-11 px-0 py-0 rounded shadow overflow-auto" id="invoiceTableArea" style="height: 360px;"></div>
+            <div class="col-11 px-0 py-0 rounded shadow overflow-y-auto" id="invoiceTableArea" style="height: 360px;"></div>
         </div>  
 
     `;
@@ -443,12 +443,35 @@ async function LoadInvoiceTable(dataArray){
                 acdCollapse.setAttribute("data-bs-parent","#invoiceAccordion")
 
                 const acdBody = document.createElement("div");
-                acdBody.className = "accordion-body";
-                acdBody.textContent = item.errorMessage;
-                acdBody.addEventListener("click", function (e) {
+                acdBody.className = "accordion-body row d-flex justify-content-center mx-0 px-3";
+
+                const leftCol = document.createElement("div");
+                leftCol.className = "col-10 mx-0";
+
+                const em = document.createElement("em");
+                em.className = "font-weight-bold";
+                em.textContent = item.errorMessage;
+
+                const small = document.createElement("small");
+                small.appendChild(em);
+
+                leftCol.appendChild(small);
+
+                const rightCol = document.createElement("div");
+                rightCol.className = "col-2 d-flex justify-content-end mx-0";
+
+                const icon = document.createElement('i');
+                icon.className = "bi bi-box-arrow-up-right text-primary fs-6";
+                icon.style.cursor = "pointer";
+                icon.addEventListener("click", function (e) {
                     e.preventDefault();
                     Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OpenInvoice', [item.invoiceNo]);
                 });
+
+                rightCol.appendChild(icon);
+
+                acdBody.appendChild(leftCol);
+                acdBody.appendChild(rightCol);
 
                 acdCollapse.appendChild(acdBody);
 
