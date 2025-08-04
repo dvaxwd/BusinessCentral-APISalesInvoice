@@ -438,10 +438,11 @@ async function showMap(ResultArray) {
     }
 }
 
+// This group of function is used to control Invoice table *****
 async function LoadInvoiceTable(dataArray){
-    const targetElement = document.getElementById("invoiceTableArea");
-    try {
-       const data = JSON.parse(dataArray);
+    try{
+        const targetElement = document.getElementById("invoiceTableArea");
+        const data = JSON.parse(dataArray);
         if(Array.isArray(data)){
             const accordion = document.createElement("div");
             accordion.className = "accordion";
@@ -510,6 +511,22 @@ async function LoadInvoiceTable(dataArray){
                 accordion.appendChild(acdItem);
             });
             targetElement.appendChild(accordion);
+        }
+    }catch(error){
+        console.log(error);
+    }
+}
+async function LoadInvoiceTableApplyFilter(dataArray){
+    try{
+        const target = document.getElementById("invoiceTableArea");
+        const data = JSON.parse(dataArray);
+        if(Array.isArray(data)){
+            if(data.length > 0){
+                console.log('data.length > 0',data.length);
+                LoadInvoiceTable(dataArray);
+            }else{
+                await createNotFoundFilterElement(target);
+            }
         }
     }catch(error){
         console.log(error);

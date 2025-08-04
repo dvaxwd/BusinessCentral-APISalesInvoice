@@ -15,7 +15,7 @@ page 90012 "NDC-FactBoxArea"
                 begin
                     CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(YearFilter, MonthFilter), CalLastUpdate());
                     CurrPage.SummaryLog.showMap(PrepareDataMap());
-                    CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice());
+                    CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice(YearFilter, MonthFilter));
                 end;
 
                 trigger OnYearSelected(YearText: Text)
@@ -24,6 +24,7 @@ page 90012 "NDC-FactBoxArea"
                     CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                     CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                     CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                    CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                 end;
 
                 trigger OnMonthSelected(MonthText: Text)
@@ -32,6 +33,7 @@ page 90012 "NDC-FactBoxArea"
                     CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                     CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                     CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                    CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                 end;
 
                 trigger OpenInvoice(InvoicceNo: Text)
@@ -280,13 +282,41 @@ page 90012 "NDC-FactBoxArea"
     end;
 
     // This procedure
-    local procedure PrepareDataFailInvoice() Result: Text
+    local procedure PrepareDataFailInvoice(Year: Integer; Month: Integer) Result: Text
     var
         LogRec: Record "NDC-SalesInvoicesPostLog";
         JsonArray: JsonArray;
         JsonObject: JsonObject;
+        StartDateTime, EndDateTime : DateTime;
     begin
         LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+        Clear(jsonArray);
+        Clear(jsonObject);
+
+        if (Year <> 0) then begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+            end else begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
+                EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+            end;
+        end else begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
+            end;
+        end;
+
         if LogRec.FindSet() then begin
             repeat
                 Clear(JsonObject);
