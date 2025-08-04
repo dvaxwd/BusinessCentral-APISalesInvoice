@@ -336,13 +336,17 @@ async function LoadFailReasonCard(targetElement, dataArray){
         if(Array.isArray(data)){
             if(data.length > 0){
                 data.sort((a,b) => b.count - a.count);
+                if(data.length > 5){
+                    data.splice(5);
+                }
                 targetElement.innerHTML = ``;
                 data.forEach(item => {
                     const button = document.createElement("button");
                     button.className = "btn btn-outline-dark shadow position-relative mb-2";
-                    button.type = button;
+                    button.type = "button";
                     button.textContent = item.reason;
                     button.addEventListener("click", (e) => {
+                        Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnTopFailureClick', [item.reason], false)
                         const target = document.getElementById("invoiceArea");
                         if (target) {
                             target.scrollIntoView({ behavior: "smooth" });
@@ -522,7 +526,6 @@ async function LoadInvoiceTableApplyFilter(dataArray){
         const data = JSON.parse(dataArray);
         if(Array.isArray(data)){
             if(data.length > 0){
-                console.log('data.length > 0',data.length);
                 LoadInvoiceTable(dataArray);
             }else{
                 await createNotFoundFilterElement(target);
@@ -530,6 +533,16 @@ async function LoadInvoiceTableApplyFilter(dataArray){
         }
     }catch(error){
         console.log(error);
+    }
+}
+async function LoadInvoiveTableFilterReason(dataArray){
+    try{
+        const data = JSON.parse(dataArray);
+        if(Array.isArray(data)){
+            LoadInvoiceTable(dataArray);
+        }
+    }catch(error){
+        console.log(error)   
     }
 }
 

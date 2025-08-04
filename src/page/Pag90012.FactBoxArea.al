@@ -36,6 +36,10 @@ page 90012 "NDC-FactBoxArea"
                     CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                 end;
 
+                trigger OnTopFailureClick(Keyword: Text)
+                    begin
+                        CurrPage.SummaryLog.LoadInvoiveTableFilterReason(PrepareSaleInvoiceApplyFilter(YearFilter, MonthFilter, Keyword));
+                    end;
                 trigger OpenInvoice(InvoicceNo: Text)
                 begin
                     OpenSaleInvoice(InvoicceNo);
@@ -372,4 +376,64 @@ page 90012 "NDC-FactBoxArea"
                 jsonArray.WriteTo(Result);
             end;
         end;
+
+    // ***** This procedure is used to
+    local procedure PrepareSaleInvoiceApplyFilter(Year: Integer; Month: Integer; Keyword: Text)Result: Text
+        var
+        LogRec: Record "NDC-SalesInvoicesPostLog";
+        JsonArray: JsonArray;
+        JsonObject: JsonObject;
+        StartDateTime, EndDateTime : DateTime;
+        RealMessage: Text;
+    begin
+        Clear(jsonArray);
+        Clear(jsonObject);
+        LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+        if Keyword.Contains('Lot') then
+            RealMessage := 'Lot';
+        if Keyword.Contains('available') then
+            RealMessage := 'location';
+        if Keyword.Contains('Required') then
+            RealMessage := 'required';
+        if Keyword.Contains('quantity') then
+            RealMessage := 'Quantity';
+        if Keyword.Contains('Not') then
+            RealMessage := 'Not';
+        if (Year <> 0) then begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+            end else begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
+                EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+            end;
+        end else begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
+            end;
+        end;
+
+        if LogRec.FindSet() then begin
+            repeat
+                if LogRec."Error Message".Contains(RealMessage) then begin
+                    Clear(JsonObject);
+                    JsonObject.Add('invoiceNo', LogRec."Invoice No.");
+                    JsonObject.Add('retailName', LogRec."Location Name");
+                    JsonObject.Add('errorMessage', LogRec."Error Message");
+                    JsonArray.Add(JsonObject);
+                end;
+            until LogRec.Next() = 0
+        end;
+        JsonArray.WriteTo(Result);
+    end;
 }
