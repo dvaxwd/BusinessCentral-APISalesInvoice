@@ -18,6 +18,7 @@ controladdin "NDC-SummaryLog"{
     event OnMonthSelected(MonthText: Text)
     event OnTopFailureClick(Keyword: Text)
     event OpenInvoice(InvoicceNo: Text);
+    event ClearFilter(YearText: Text; MonthText: Text)
 
     procedure LoadSummaryData(ResultArray: Text; failSummary: Text; lastUpdate: Text)
     procedure LoadSummaryApplyFilter(ResultArray: Text; lastUpdated: Text)

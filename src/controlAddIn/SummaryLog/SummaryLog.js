@@ -556,7 +556,8 @@ async function LoadInvoiveTableFilterReason(dataArray){
 function scrolBack(){
     const target = document.getElementById("filterArea");
     if (target) {
-        target.scrollIntoView({ behavior: "smooth" });                        
+        target.scrollIntoView({ behavior: "smooth" });
+        Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('ClearFilter',[0, 0],false)                   
     }
 }
 function FormatDateFormular(lastUpdate) {

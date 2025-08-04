@@ -36,6 +36,16 @@ page 90012 "NDC-FactBoxArea"
                     CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                 end;
 
+                trigger ClearFilter(YearText: Text; MonthText: Text)
+                    begin
+                        Evaluate(YearFilter, YearText);
+                        Evaluate(MonthFilter, MonthText);
+                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
+                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
+                    end;
+
                 trigger OnTopFailureClick(Keyword: Text)
                     begin
                         CurrPage.SummaryLog.LoadInvoiveTableFilterReason(PrepareSaleInvoiceApplyFilter(YearFilter, MonthFilter, Keyword));
