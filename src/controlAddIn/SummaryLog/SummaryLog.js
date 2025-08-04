@@ -19,7 +19,6 @@ async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
             </div>
         </div>
         <div class="row m-2 p-2 rounded shadow" id="mapArea" style="height: 480px;"></div>
-        <div class="row h-100" id="linkPageArea">
         <div class="row d-flex mt-4 mb-4 align-items-center" id="invoiceArea">
             <div class="col-auto ms-2">
                 <h6>
@@ -30,10 +29,16 @@ async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
                 <i class="bi bi-tools fs-4"></i>  
             </div>
         </div>
-        <div class="row d-flex justify-content-center mx-1 h-100" >
+        <div class="row d-flex justify-content-center mx-1 mb-2 h-auto" >
             <div class="col-11 px-0 py-0 rounded shadow overflow-y-auto" id="invoiceTableArea" style="height: 360px;"></div>
-        </div>  
-
+        </div>
+        <div class="row d-flex justify-content-end px-5 pt-5 pb-0 h-100" id="footer">
+            <div class="col-auto px-0 py-0 align-items-end">
+                <span class="rounded-circle shadow px-2 py-2" onclick="scrolBack()" style="cursor: pointer;">
+                    <i class="bi bi-chevron-double-up fs-2 font-weight-bold"></i>
+                </span>
+            </div>
+        </div>
     `;
     const filterArea = document.getElementById("filterArea");
     const cardArea = document.getElementById("cardArea");
@@ -395,6 +400,7 @@ async function LoadEmptyFailReasonCard(targetElement){
     }
 }
 
+// ***** This group of function is used to control map *****
 async function showMap(ResultArray) {
     const data = JSON.parse(ResultArray);
     let map;
@@ -546,6 +552,13 @@ async function LoadInvoiveTableFilterReason(dataArray){
     }
 }
 
+// ***** Other
+function scrolBack(){
+    const target = document.getElementById("filterArea");
+    if (target) {
+        target.scrollIntoView({ behavior: "smooth" });                        
+    }
+}
 function FormatDateFormular(lastUpdate) {
     try {
         const data = JSON.parse(lastUpdate);
