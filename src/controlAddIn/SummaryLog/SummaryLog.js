@@ -260,7 +260,6 @@ async function LoadPieChartApplyFilter(dataArray){
         if(Array.isArray(data)){
             const obj = data[0];
             if((obj['successInvoice'] === 0) && (obj['failInvoice'] === 0)){
-                console.log('not found : ', obj)
                 createNotFoundFilterElement(chartArea);
             }else{
                 console.log('found : ', obj)
@@ -330,6 +329,7 @@ async function createNotFoundFilterElement(targetElement){
     targetElement.appendChild(tips);
 }
 
+// ***** This group of function is used to control top failure reason card *****
 async function LoadFailReasonCard(targetElement, dataArray){
     try {
         const data = JSON.parse(dataArray);
@@ -359,6 +359,20 @@ async function LoadFailReasonCard(targetElement, dataArray){
         }
     }catch(error){
         console.log(error);   
+    }
+}
+async function LoadFailReasonCardApplyfilter(dataArray){
+    try{
+        const target = document.getElementById("failCardArea");
+        const data = JSON.parse(dataArray);
+        if(Array.isArray(data)){
+            if(data.length > 0){
+                LoadFailReasonCard(target, dataArray);
+            }else{
+            }
+        }
+    }catch(error){
+        console.log(error);
     }
 }
 

@@ -13,7 +13,7 @@ page 90012 "NDC-FactBoxArea"
                 ApplicationArea = All;
                 trigger ControlReady()
                 begin
-                    CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(), CalLastUpdate());
+                    CurrPage.SummaryLog.LoadSummaryData(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(YearFilter, MonthFilter), CalLastUpdate());
                     CurrPage.SummaryLog.showMap(PrepareDataMap());
                     CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice());
                 end;
@@ -23,6 +23,7 @@ page 90012 "NDC-FactBoxArea"
                     Evaluate(YearFilter, YearText);
                     CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                     CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                    CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
                 end;
 
                 trigger OnMonthSelected(MonthText: Text)
@@ -30,6 +31,7 @@ page 90012 "NDC-FactBoxArea"
                     Evaluate(MonthFilter, MonthText);
                     CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                     CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                    CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
                 end;
 
                 trigger OpenInvoice(InvoicceNo: Text)
@@ -205,7 +207,7 @@ page 90012 "NDC-FactBoxArea"
         exit(Result);
     end;
 
-    local procedure SummaryCountFailReason() Result: Text
+    local procedure SummaryCountFailReason(Year: Integer; Month: Integer) Result: Text
     var
         jsonArray: JsonArray;
         jsonObject: JsonObject;
@@ -214,8 +216,36 @@ page 90012 "NDC-FactBoxArea"
         TempKey: Text;
         PairKey: Text;
         PairValue: Integer;
+        StartDateTime, EndDateTime : DateTime;
     begin
         LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+        Clear(jsonArray);
+        Clear(jsonObject);
+
+        if (Year <> 0) then begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+            end else begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
+                EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+            end;
+        end else begin
+            if (Month <> 0) then begin
+                StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
+                if Month = 12 then
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
+                else
+                    EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
+                LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
+            end;
+        end;
+
         if LogRec.FindSet() then begin
             SummaryDict.Add('Lot assignment incomplete', 0);
             SummaryDict.Add('No available lot found', 0);
