@@ -369,10 +369,25 @@ async function LoadFailReasonCardApplyfilter(dataArray){
             if(data.length > 0){
                 LoadFailReasonCard(target, dataArray);
             }else{
+                LoadEmptyFailReasonCard(target);
             }
         }
     }catch(error){
         console.log(error);
+    }
+}
+async function LoadEmptyFailReasonCard(targetElement){
+    targetElement.innerHTML = ``;
+    for(let i = 0; i <= 4; i++){
+        const button = document.createElement("button");
+        button.className = "btn btn-outline-dark shadow position-relative mb-2 disabled placeholder-glow";
+        button.type = button;
+
+        const span = document.createElement("span");
+        span.className = "placeholder col-12";
+
+        button.appendChild(span);
+        targetElement.appendChild(button);
     }
 }
 
