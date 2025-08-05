@@ -23,6 +23,7 @@ page 90012 "NDC-FactBoxArea"
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                         CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                         CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadMapApplyFilter(PrepareDataMap());
                         CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                     end;
                 trigger OnMonthSelected(MonthText: Text)
@@ -31,6 +32,7 @@ page 90012 "NDC-FactBoxArea"
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                         CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                         CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadMapApplyFilter(PrepareDataMap());
                         CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                     end;
                 trigger ClearFilter(YearText: Text; MonthText: Text)
@@ -40,6 +42,7 @@ page 90012 "NDC-FactBoxArea"
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                         CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                         CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadMapApplyFilter(PrepareDataMap());
                         CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                     end;
                 trigger OnTopFailureClick(Keyword: Text)
@@ -157,6 +160,7 @@ page 90012 "NDC-FactBoxArea"
             logData: Record "NDC-SalesInvoicesPostLog";
         begin
             logData.SetRange("Post Status", logData."Post Status"::Success);
+            FilterDate(logData, YearFilter, MonthFilter);
             if logData.FindSet() then begin
                 repeat
                     if not Result.ContainsKey(logData."Location Code") then begin
@@ -176,6 +180,7 @@ page 90012 "NDC-FactBoxArea"
             logData: Record "NDC-SalesInvoicesPostLog";
             SummaryCount: List of [Integer];
         begin
+            FilterDate(logData, YearFilter, MonthFilter);
             if logData.FindSet() then begin
                 repeat
                     if not Result.ContainsKey(logData."Location Code") then begin

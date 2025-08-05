@@ -380,6 +380,11 @@ async function LoadMap(dataArray){
         });
     }
 }
+async function LoadMapApplyFilter(dataArray){
+    const targetElement = document.getElementById("mapArea");
+    targetElement.innerHTML = ``;
+    LoadMap(dataArray);
+}
 
 // ***** This group of functions is used to control the invoice table *****
 async function LoadInvoiceTable(dataArray){
