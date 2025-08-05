@@ -12,27 +12,27 @@ page 90012 "NDC-FactBoxArea"
             {
                 ApplicationArea = All;
                 trigger ControlReady()
-                begin
-                    CurrPage.SummaryLog.LoadDashboard(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(YearFilter, MonthFilter), CalLastUpdate());
-                    CurrPage.SummaryLog.LoadMap(PrepareDataMap());
-                    CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice(YearFilter, MonthFilter));
-                end;
+                    begin
+                        CurrPage.SummaryLog.LoadDashboard(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(YearFilter, MonthFilter), CalLastUpdate());
+                        CurrPage.SummaryLog.LoadMap(PrepareDataMap());
+                        CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice(YearFilter, MonthFilter));
+                    end;
                 trigger OnYearSelected(YearText: Text)
-                begin
-                    Evaluate(YearFilter, YearText);
-                    CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
-                    CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
-                    CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
-                    CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
-                end;
+                    begin
+                        Evaluate(YearFilter, YearText);
+                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
+                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
+                    end;
                 trigger OnMonthSelected(MonthText: Text)
-                begin
-                    Evaluate(MonthFilter, MonthText);
-                    CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
-                    CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
-                    CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
-                    CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
-                end;
+                    begin
+                        Evaluate(MonthFilter, MonthText);
+                        CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
+                        CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
+                    end;
                 trigger ClearFilter(YearText: Text; MonthText: Text)
                     begin
                         Evaluate(YearFilter, YearText);
@@ -83,30 +83,7 @@ page 90012 "NDC-FactBoxArea"
             TotalCount := 0;
             SuccessCount := 0;
             FailCount := 0;
-
-            if (Year <> 0) then begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end else begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
-                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end;
-            end else begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
-                end;
-            end;
+            FilterDate(LogRec, YearFilter, MonthFilter);
             if LogRec.FindSet() then begin
                 repeat
                     TotalCount += 1;
@@ -238,34 +215,10 @@ page 90012 "NDC-FactBoxArea"
             PairValue: Integer;
             StartDateTime, EndDateTime : DateTime;
         begin
-            LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
             Clear(jsonArray);
             Clear(jsonObject);
-
-            if (Year <> 0) then begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end else begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
-                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end;
-            end else begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
-                end;
-            end;
-
+            LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+            FilterDate(LogRec, Year, MonthFilter);
             if LogRec.FindSet() then begin
                 SummaryDict.Add('Lot assignment incomplete', 0);
                 SummaryDict.Add('No available lot found', 0);
@@ -307,34 +260,10 @@ page 90012 "NDC-FactBoxArea"
             JsonObject: JsonObject;
             StartDateTime, EndDateTime : DateTime;
         begin
-            LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
             Clear(jsonArray);
             Clear(jsonObject);
-
-            if (Year <> 0) then begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end else begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
-                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end;
-            end else begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
-                end;
-            end;
-
+            LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+            FilterDate(LogRec, YearFilter, MonthFilter);
             if LogRec.FindSet() then begin
                 repeat
                     Clear(JsonObject);
@@ -402,6 +331,7 @@ page 90012 "NDC-FactBoxArea"
             Clear(jsonArray);
             Clear(jsonObject);
             LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
+            FilterDate(LogRec, YearFilter, MonthFilter);
             if Keyword.Contains('Lot') then
                 RealMessage := 'Lot';
             if Keyword.Contains('available') then
@@ -412,30 +342,6 @@ page 90012 "NDC-FactBoxArea"
                 RealMessage := 'Quantity';
             if Keyword.Contains('Not') then
                 RealMessage := 'Not';
-            if (Year <> 0) then begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end else begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
-                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
-                end;
-            end else begin
-                if (Month <> 0) then begin
-                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
-                    if Month = 12 then
-                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
-                    else
-                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
-                    LogRec.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
-                end;
-            end;
-
             if LogRec.FindSet() then begin
                 repeat
                     if LogRec."Error Message".Contains(RealMessage) then begin
@@ -448,5 +354,35 @@ page 90012 "NDC-FactBoxArea"
                 until LogRec.Next() = 0
             end;
             JsonArray.WriteTo(Result);
+        end;
+
+    // ***** This procedure is used to fater log entries by date. *****
+    local procedure FilterDate(var LogParam: Record "NDC-SalesInvoicesPostLog"; Year: Integer; Month: Integer)
+        var
+            StartDateTime, EndDateTime : DateTime;
+        begin
+            if (Year <> 0) then begin
+                if (Month <> 0) then begin
+                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Year), 000000T);
+                    if Month = 12 then
+                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T)
+                    else
+                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Year), 000000T);
+                    LogParam.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+                end else begin
+                    StartDateTime := CreateDateTime(DMY2DATE(1, 1, Year), 000000T);
+                    EndDateTime := CreateDateTime(DMY2DATE(1, 1, Year + 1), 000000T);
+                    LogParam.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime);
+                end;
+            end else begin
+                if (Month <> 0) then begin
+                    StartDateTime := CreateDateTime(DMY2DATE(1, Month, Date2DMY(Today(), 3)), 000000T);
+                    if Month = 12 then
+                        EndDateTime := CreateDateTime(DMY2DATE(1, 1, Date2DMY(Today(), 3) + 1), 000000T)
+                    else
+                        EndDateTime := CreateDateTime(DMY2DATE(1, Month + 1, Date2DMY(Today(), 3)), 000000T);
+                    LogParam.SetRange("Post Attempt DateTime", StartDateTime, EndDateTime - 1);
+                end;
+            end;
         end;
 }
