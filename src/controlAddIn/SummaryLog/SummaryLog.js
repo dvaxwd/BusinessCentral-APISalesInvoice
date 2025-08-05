@@ -1,7 +1,7 @@
-Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('controlReady', [], false)
+Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('ControlReady', [], false)
 
-// ***** This function is main function to render summary area. *****
-async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
+// ***** This is the main function responsible for rendering the dashboard. *****
+async function LoadDashboard(dataArray, failReasonArray, lastUpdate){
     const controlAddIn = document.getElementById("controlAddIn");
     controlAddIn.innerHTML = `
         <div class="d-flex flex-row-reverse px-3 mb-2" id="filterArea"></div>
@@ -34,7 +34,7 @@ async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
         </div>
         <div class="row d-flex justify-content-end px-5 pt-5 pb-0 h-100" id="footer">
             <div class="col-auto px-0 py-0 align-items-end">
-                <span class="rounded-circle shadow px-2 py-2" onclick="scrolBack()" style="cursor: pointer;">
+                <span class="rounded-circle shadow px-2 py-2" onclick="ScrolBack()" style="cursor: pointer;">
                     <i class="bi bi-chevron-double-up fs-2 font-weight-bold"></i>
                 </span>
             </div>
@@ -46,86 +46,17 @@ async function LoadSummaryData(ResultArray, failReasonArray, lastUpdate) {
     const failCardArea = document.getElementById("failCardArea");
 
     await FilterManagement(filterArea);
-    await LoadSummaryCard(cardArea, ResultArray, FormatDateFormular(lastUpdate));
-    await LoadPieChart(chartArea, ResultArray);
+    await LoadSummaryCard(cardArea, dataArray, FormatDateFormular(lastUpdate));
+    await LoadPieChart(chartArea, dataArray);
     await LoadFailReasonCard(failCardArea, failReasonArray);
 }
 
-// ***** This function is used to generate summary card and inject into target area *****
-async function LoadSummaryCard(targetElement, ResultArray, lastUpdate) {
-    try {
-        const data = JSON.parse(ResultArray);
-        if (Array.isArray(data)) {
-            targetElement.innerHTML = ``;
-            const obj = data[0];
-            Object.keys(obj).forEach((key) => {
-                switch (key) {
-                    case 'totalInvoice':
-                        CreateCard(targetElement, 'Total Invoice', obj[key], 'primary', lastUpdate);
-                        break;
-                    case 'successInvoice':
-                        CreateCard(targetElement, 'Success Invoice', obj[key], 'success', lastUpdate);
-                        break;
-                    case 'failInvoice':
-                        CreateCard(targetElement, 'Fail Invoice', obj[key], 'danger', lastUpdate);
-                        break;
-                }
-            })
-        }
-    } catch (error) {
-        targetElement.innerHTML = ``;
-        const message = document.createElement("p");
-        message.textContent = `Loading data`;
-        targetElement.appendChild(message);
-    }
-}
-
-// ***** This function is used to create card *****
-async function CreateCard(targetElement,header, amount, style , lastUpdate) {
-    const card = document.createElement("div");
-    card.className = `card col-auto m-2 px-0 h-auto shadow border border-${style}`;
-
-    const cardHeader = document.createElement("div");
-    cardHeader.className = `card-header px-3 bg-${style}`;
-
-    const em = document.createElement("em");
-    em.className = "text-start text-white fw-semibold";
-    em.textContent = header;
-
-    cardHeader.appendChild(em);
-
-    const cardBody = document.createElement("div");
-    cardBody.className = "card-body px-4";
-
-    const cardTitle = document.createElement("h3");
-    cardTitle.className = "card-title text-end"
-    cardTitle.textContent = amount;
-
-    const cardText = document.createElement("p");
-    cardText.className = "card-text text-center";
-
-    const small = document.createElement("small");
-    small.className = "text-body-secondary text-center"
-    small.textContent = lastUpdate;
-
-    cardText.appendChild(small);
-    cardBody.appendChild(cardTitle);
-    cardBody.appendChild(cardText);
-    card.appendChild(cardHeader);
-    card.appendChild(cardBody);
-
-    targetElement.appendChild(card);
-}
-
-// ***** This function is used to manage filter *****
-async function FilterManagement(targetElement) {
+// ***** This group of functions controls the dropdown filter *****
+async function FilterManagement(targetElement){
     targetElement.innerHTML = ``;
-    
     CreateMonthDropdown(targetElement);
     CreateYearDropdown(targetElement);
 }
-
-// ***** This function is used to create year dropdown element *****
 function CreateYearDropdown(targetElement){
     const dropDown = document.createElement("div");
     dropDown.className = "dropDown mx-3";
@@ -160,11 +91,8 @@ function CreateYearDropdown(targetElement){
     }
     dropDown.appendChild(toggle);
     dropDown.appendChild(menu);
-
     targetElement.appendChild(dropDown);
 }
-
-// ***** This function is used to create month dropdown element *****
 function CreateMonthDropdown(targetElement){
     const dropDown = document.createElement("div");
     dropDown.className = "dropdown";
@@ -199,17 +127,78 @@ function CreateMonthDropdown(targetElement){
     });
     dropDown.appendChild(toggle);
     dropDown.appendChild(menu);
-
     targetElement.appendChild(dropDown);
 }
 
-// ***** This function is used to generate summary card and inject into target area after get apply filter *****
-async function LoadSummaryApplyFilter(ResultArray, lastUpdate){
+// ***** This group of functions controls the summary card *****
+async function LoadSummaryCard(targetElement, dataArray, lastUpdate){
+    try {
+        const data = JSON.parse(dataArray);
+        if (Array.isArray(data)) {
+            targetElement.innerHTML = ``;
+            const obj = data[0];
+            Object.keys(obj).forEach((key) => {
+                switch (key) {
+                    case 'totalInvoice':
+                        CreateCard(targetElement, 'Total Invoice', obj[key], 'primary', lastUpdate);
+                        break;
+                    case 'successInvoice':
+                        CreateCard(targetElement, 'Success Invoice', obj[key], 'success', lastUpdate);
+                        break;
+                    case 'failInvoice':
+                        CreateCard(targetElement, 'Fail Invoice', obj[key], 'danger', lastUpdate);
+                        break;
+                }
+            })
+        }
+    } catch (error) {
+        targetElement.innerHTML = ``;
+        const message = document.createElement("p");
+        message.textContent = `Loading data`;
+        targetElement.appendChild(message);
+    }
+}
+async function CreateCard(targetElement,header, amount, style , lastUpdate){
+    const card = document.createElement("div");
+    card.className = `card col-auto m-2 px-0 h-auto shadow border border-${style}`;
+
+    const cardHeader = document.createElement("div");
+    cardHeader.className = `card-header px-3 bg-${style}`;
+
+    const em = document.createElement("em");
+    em.className = "text-start text-white fw-semibold";
+    em.textContent = header;
+
+    cardHeader.appendChild(em);
+
+    const cardBody = document.createElement("div");
+    cardBody.className = "card-body px-4";
+
+    const cardTitle = document.createElement("h3");
+    cardTitle.className = "card-title text-end"
+    cardTitle.textContent = amount;
+
+    const cardText = document.createElement("p");
+    cardText.className = "card-text text-center";
+
+    const small = document.createElement("small");
+    small.className = "text-body-secondary text-center"
+    small.textContent = lastUpdate;
+
+    cardText.appendChild(small);
+    cardBody.appendChild(cardTitle);
+    cardBody.appendChild(cardText);
+    card.appendChild(cardHeader);
+    card.appendChild(cardBody);
+    targetElement.appendChild(card);
+}
+async function LoadSummaryApplyFilter(dataArray, lastUpdate){
     const cardArea = document.getElementById("cardArea");
-    LoadSummaryCard(cardArea, ResultArray, FormatDateFormular(lastUpdate));
+    LoadSummaryCard(cardArea, dataArray, FormatDateFormular(lastUpdate));
 }
 
-async function LoadPieChart(targetElement, ResultArray) {
+// ***** This group of functions is used to control doughnut chart *****
+async function LoadPieChart(targetElement, dataArray){
     const canvas = document.createElement("canvas");
     canvas.className = "p-3"
     canvas.id = "pieChartCanvas";
@@ -218,7 +207,7 @@ async function LoadPieChart(targetElement, ResultArray) {
     targetElement.innerHTML = '';
     targetElement.appendChild(canvas);
 
-    const invoiceRatio = CalInvoiceRatio(ResultArray);
+    const invoiceRatio = CalInvoiceRatio(dataArray);
     const ctx = canvas.getContext('2d');
     new Chart(ctx, {
         type: 'doughnut',
@@ -257,7 +246,6 @@ async function LoadPieChart(targetElement, ResultArray) {
         }
     });
 }
-
 async function LoadPieChartApplyFilter(dataArray){
     try {
         const chartArea = document.getElementById("chartArea");
@@ -276,65 +264,7 @@ async function LoadPieChartApplyFilter(dataArray){
     }
 }
 
-function CalInvoiceRatio(ResultArray){
-    try{
-        let successInvoice, failInvoice ;
-        const data = JSON.parse(ResultArray)
-        if(Array.isArray(data)){
-            const obj = data[0];
-            Object.keys(obj).forEach((key) => {
-                switch (key) {
-                    case 'successInvoice':
-                        successInvoice = obj[key]*100/obj['totalInvoice']
-                        break;
-                    case 'failInvoice':
-                        failInvoice = obj[key]*100/obj['totalInvoice']
-                        break;
-                }
-            })
-        }
-        return[successInvoice,failInvoice] 
-    }catch(error){
-        console.log(error);
-    }
-}
-
-async function createNotFoundFilterElement(targetElement){
-    targetElement.innerHTML = ``;
-
-    const spinnerRow = document.createElement("div");
-    spinnerRow.className = "row d-flex justify-content-center mt-5 mb-3 pt-5";
-
-    const spinnerGrow = document.createElement("div");
-    spinnerGrow.className = "spinner-grow spinner-grow-sm text-primary";
-    spinnerGrow.role = "status";
-    spinnerGrow.style = "width: 1.5rem; height: 1.5rem;";
-
-    const spanVisual = document.createElement("span");
-    spanVisual.className = "visually-hidden";
-
-    spinnerGrow.appendChild(spanVisual);
-    spinnerRow.appendChild(spinnerGrow);
-
-    const message = document.createElement("div");
-    message.className = "row d-flex justify-content-center mb-1";
-    message.textContent = 'No Invoice';
-
-    const tips = document.createElement("div");
-    tips.className = "row d-flex justify-content-center";
-
-    const small = document.createElement("small");
-    small.className = "text-center";
-    small.textContent = 'Try adjusting filters to see more results.';
-
-    tips.appendChild(small);
-
-    targetElement.appendChild(spinnerRow);
-    targetElement.appendChild(message);
-    targetElement.appendChild(tips);
-}
-
-// ***** This group of function is used to control top failure reason card *****
+// ***** This group of functions is used to control the Top Failure Reason card *****
 async function LoadFailReasonCard(targetElement, dataArray){
     try {
         const data = JSON.parse(dataArray);
@@ -400,9 +330,9 @@ async function LoadEmptyFailReasonCard(targetElement){
     }
 }
 
-// ***** This group of function is used to control map *****
-async function showMap(ResultArray) {
-    const data = JSON.parse(ResultArray);
+// ***** This group of functions is used to control the map *****
+async function LoadMap(dataArray){
+    const data = JSON.parse(dataArray);
     let map;
 
     const container = document.getElementById("mapArea");
@@ -410,7 +340,7 @@ async function showMap(ResultArray) {
         container.innerHTML = `<div id="map" style="width:100%; height:100%;"></div>`;
     }
 
-    if (!map) {
+    if(!map){
         map = L.map('map').setView(['13.736717', '100.523186'], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -448,7 +378,7 @@ async function showMap(ResultArray) {
     }
 }
 
-// This group of function is used to control Invoice table *****
+// ***** This group of functions is used to control the invoice table *****
 async function LoadInvoiceTable(dataArray){
     try{
         const targetElement = document.getElementById("invoiceTableArea");
@@ -509,15 +439,11 @@ async function LoadInvoiceTable(dataArray){
                 });
 
                 rightCol.appendChild(icon);
-
                 acdBody.appendChild(leftCol);
                 acdBody.appendChild(rightCol);
-
                 acdCollapse.appendChild(acdBody);
-
                 acdItem.appendChild(acdHeader);
                 acdItem.appendChild(acdCollapse);
-
                 accordion.appendChild(acdItem);
             });
             targetElement.appendChild(accordion);
@@ -552,12 +478,62 @@ async function LoadInvoiveTableFilterReason(dataArray){
     }
 }
 
-// ***** Other
-function scrolBack(){
-    const target = document.getElementById("filterArea");
-    if (target) {
-        target.scrollIntoView({ behavior: "smooth" });
-        Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('ClearFilter',[0, 0],false)                   
+// ***** This group of functions is used to render DOM elements when data is empty *****
+async function createNotFoundFilterElement(targetElement){
+    targetElement.innerHTML = ``;
+
+    const spinnerRow = document.createElement("div");
+    spinnerRow.className = "row d-flex justify-content-center mt-5 mb-3 pt-5";
+
+    const spinnerGrow = document.createElement("div");
+    spinnerGrow.className = "spinner-grow spinner-grow-sm text-primary";
+    spinnerGrow.role = "status";
+    spinnerGrow.style = "width: 1.5rem; height: 1.5rem;";
+
+    const spanVisual = document.createElement("span");
+    spanVisual.className = "visually-hidden";
+
+    spinnerGrow.appendChild(spanVisual);
+    spinnerRow.appendChild(spinnerGrow);
+
+    const message = document.createElement("div");
+    message.className = "row d-flex justify-content-center mb-1";
+    message.textContent = 'No Invoice';
+
+    const tips = document.createElement("div");
+    tips.className = "row d-flex justify-content-center";
+
+    const small = document.createElement("small");
+    small.className = "text-center";
+    small.textContent = 'Try adjusting filters to see more results.';
+
+    tips.appendChild(small);
+    targetElement.appendChild(spinnerRow);
+    targetElement.appendChild(message);
+    targetElement.appendChild(tips);
+}
+
+// ***** This group of functions includes utility and logic components *****
+function CalInvoiceRatio(dataArray){
+    try{
+        let successInvoice, failInvoice ;
+        const data = JSON.parse(dataArray)
+        if(Array.isArray(data)){
+            const obj = data[0];
+            Object.keys(obj).forEach((key) => {
+                switch (key) {
+                    case 'successInvoice':
+                        successInvoice = obj[key]*100/obj['totalInvoice']
+                        break;
+                    case 'failInvoice':
+                        failInvoice = obj[key]*100/obj['totalInvoice']
+                        break;
+                }
+            })
+        }
+        return[successInvoice,failInvoice] 
+    }catch(error){
+        console.log(error);
     }
 }
 function FormatDateFormular(lastUpdate) {
@@ -565,16 +541,12 @@ function FormatDateFormular(lastUpdate) {
         const data = JSON.parse(lastUpdate);
         const obj = data[0];
         let updated = obj.lastUpdate;
-
-        if (updated === "today") return "Updated today";
-
-        // regex match ตัวเลขตามด้วยตัวอักษร D/W/M/Y
         const match = updated.match(/^(\d+)([DWMY])/);
 
+        if (updated === "today") return "Updated today";
         if (match) {
             const number = parseInt(match[1]);
             const unit = match[2];
-
             if (number === 1) {
                 switch (unit) {
                     case 'D': return 'Updated yesterday';
@@ -591,11 +563,17 @@ function FormatDateFormular(lastUpdate) {
                 }
             }
         }
-
-        return updated; // fallback ถ้าไม่ตรง pattern
+        return updated;
     } catch (error) {
         console.log(error);
         return '';
+    }
+}
+function ScrolBack(){
+    const target = document.getElementById("filterArea");
+    if (target) {
+        target.scrollIntoView({ behavior: "smooth" });
+        Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('ClearFilter',[0, 0],false)                   
     }
 }
 

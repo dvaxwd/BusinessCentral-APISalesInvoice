@@ -13,18 +13,18 @@ controladdin "NDC-SummaryLog"{
                 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
     StartupScript = 'SummaryLog.js';
     
-    event controlReady()
+    event ControlReady()
     event OnYearSelected(YearText: Text)
     event OnMonthSelected(MonthText: Text)
     event OnTopFailureClick(Keyword: Text)
     event OpenInvoice(InvoicceNo: Text);
     event ClearFilter(YearText: Text; MonthText: Text)
 
-    procedure LoadSummaryData(ResultArray: Text; failSummary: Text; lastUpdate: Text)
+    procedure LoadDashboard(ResultArray: Text; failSummary: Text; lastUpdate: Text)
     procedure LoadSummaryApplyFilter(ResultArray: Text; lastUpdated: Text)
     procedure LoadPieChartApplyFilter(ResultArray: Text)
     procedure LoadFailReasonCardApplyfilter(ResultArray: Text)
-    procedure showMap(ResultArray: Text);
+    procedure LoadMap(ResultArray: Text);
     procedure LoadInvoiceTable(ResultArray: Text)
     procedure LoadInvoiceTableApplyFilter(ResultArray: Text)
     procedure LoadInvoiveTableFilterReason(ResultArray: Text)
