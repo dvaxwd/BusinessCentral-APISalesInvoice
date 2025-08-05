@@ -89,6 +89,8 @@ page 90012 "NDC-FactBoxArea"
                     case LogRec."Post Status" of
                         LogRec."Post Status"::Success:
                             SuccessCount += 1;
+                        LogRec."Post Status"::RemovedOrModified:
+                            SuccessCount += 1;
                         LogRec."Post Status"::Fail:
                             FailCount += 1;
                     end;
@@ -187,7 +189,7 @@ page 90012 "NDC-FactBoxArea"
                     end;
 
                     SummaryCount.Set(1, SummaryCount.Get(1) + 1);
-                    if logData."Post Status" = logData."Post Status"::Success then begin
+                    if (logData."Post Status" = logData."Post Status"::Success) or (logData."Post Status" = logData."Post Status"::RemovedOrModified) then begin
                         SummaryCount.Set(2, SummaryCount.Get(2) + 1);
                     end else begin
                         SummaryCount.Set(3, SummaryCount.Get(3) + 1);
