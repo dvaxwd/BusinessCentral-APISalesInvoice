@@ -47,6 +47,8 @@ table 90007 "NDC-SalesInvoicesPostLog"
         field(11; "Transaction ID"; Guid)
         {
             Caption = 'Transaction ID';
+        }field(12; "Log Code"; Code[10]){
+            caption = 'Log Code';
         }
     }
     keys

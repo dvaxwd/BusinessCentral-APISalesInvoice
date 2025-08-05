@@ -76,7 +76,6 @@ page 90012 "NDC-FactBoxArea"
             TotalCount: Integer;
             SuccessCount: Integer;
             FailCount: Integer;
-            StartDateTime, EndDateTime : DateTime;
         begin
             Clear(jsonArray);
             Clear(jsonObject);
@@ -89,6 +88,8 @@ page 90012 "NDC-FactBoxArea"
                     TotalCount += 1;
                     case LogRec."Post Status" of
                         LogRec."Post Status"::Success:
+                            SuccessCount += 1;
+                        LogRec."Post Status"::RemovedOrModified:
                             SuccessCount += 1;
                         LogRec."Post Status"::Fail:
                             FailCount += 1;
@@ -167,7 +168,6 @@ page 90012 "NDC-FactBoxArea"
                     end;
                 until logData.Next() = 0;
             end;
-            exit(Result);
         end;
 
     // ***** This procedure is used to count invoice per retail. ***** 
@@ -175,8 +175,6 @@ page 90012 "NDC-FactBoxArea"
         var
             logData: Record "NDC-SalesInvoicesPostLog";
             SummaryCount: List of [Integer];
-            OP: Option a,B,C;
-            test: Dictionary of [Code[10], Dictionary of [Code[10], Text[250]]];
         begin
             if logData.FindSet() then begin
                 repeat
@@ -191,7 +189,7 @@ page 90012 "NDC-FactBoxArea"
                     end;
 
                     SummaryCount.Set(1, SummaryCount.Get(1) + 1);
-                    if logData."Post Status" = logData."Post Status"::Success then begin
+                    if (logData."Post Status" = logData."Post Status"::Success) or (logData."Post Status" = logData."Post Status"::RemovedOrModified) then begin
                         SummaryCount.Set(2, SummaryCount.Get(2) + 1);
                     end else begin
                         SummaryCount.Set(3, SummaryCount.Get(3) + 1);
@@ -209,45 +207,37 @@ page 90012 "NDC-FactBoxArea"
             jsonArray: JsonArray;
             jsonObject: JsonObject;
             LogRec: Record "NDC-SalesInvoicesPostLog";
+            LogCode: Record "NDC-LogCode";
             SummaryDict: Dictionary of [Text, Integer];
-            TempKey: Text;
             PairKey: Text;
             PairValue: Integer;
-            StartDateTime, EndDateTime : DateTime;
         begin
             Clear(jsonArray);
             Clear(jsonObject);
+            LogCode.SetRange("Type", LogCode.Type::Fail);
+            if LogCode.FindSet() then begin
+                repeat
+                    SummaryDict.Add(LogCode.Code, 0);
+                until LogCode.Next() = 0;
+            end;
             LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
             FilterDate(LogRec, Year, MonthFilter);
             if LogRec.FindSet() then begin
-                SummaryDict.Add('Lot assignment incomplete', 0);
-                SummaryDict.Add('No available lot found', 0);
-                SummaryDict.Add('Required serial no', 0);
-                SummaryDict.Add('Over quantity', 0);
-                SummaryDict.Add('Not found Serial', 0);
                 repeat
-                    if LogRec."Error Message".Contains('Lot') then
-                        SummaryDict.Set('Lot assignment incomplete', SummaryDict.Get('Lot assignment incomplete') + 1);
-
-                    if LogRec."Error Message".Contains('location') then
-                        SummaryDict.Set('No available lot found', SummaryDict.Get('No available lot found') + 1);
-
-                    if LogRec."Error Message".Contains('required') then
-                        SummaryDict.Set('Required serial no', SummaryDict.Get('Required serial no') + 1);
-
-                    if LogRec."Error Message".Contains('Quantity') then
-                        SummaryDict.Set('Over quantity', SummaryDict.Get('Over quantity') + 1);
-
-                    if LogRec."Error Message".Contains('Not') then
-                        SummaryDict.Set('Not found Serial', SummaryDict.Get('Not found Serial') + 1);
+                    SummaryDict.Set(LogRec."Log Code", SummaryDict.Get(LogRec."Log Code") + 1);
                 until LogRec.Next() = 0;
             end;
             foreach PairKey in SummaryDict.Keys do begin
                 Clear(jsonObject);
-                PairValue := SummaryDict.Get(PairKey);
-                jsonObject.Add('reason', PairKey);
-                jsonObject.Add('count', PairValue);
-                jsonArray.Add(jsonObject);
+                Clear(LogCode);
+                LogCode.SetRange(Code, PairKey);
+                if LogCode.FindFirst() then begin
+                    PairValue := SummaryDict.Get(PairKey);
+                    jsonObject.Add('code', PairKey);
+                    jsonObject.Add('description', LogCode.Description);
+                    jsonObject.Add('count', PairValue);
+                    jsonArray.Add(jsonObject);
+                end;
             end;
             jsonArray.WriteTo(Result);
         end;
@@ -258,7 +248,6 @@ page 90012 "NDC-FactBoxArea"
             LogRec: Record "NDC-SalesInvoicesPostLog";
             JsonArray: JsonArray;
             JsonObject: JsonObject;
-            StartDateTime, EndDateTime : DateTime;
         begin
             Clear(jsonArray);
             Clear(jsonObject);
@@ -320,37 +309,24 @@ page 90012 "NDC-FactBoxArea"
         end;
 
     // ***** This procedure is used to prepare data apply filter *****
-    local procedure PrepareSaleInvoiceApplyFilter(Year: Integer; Month: Integer; Keyword: Text)Result: Text
+    local procedure PrepareSaleInvoiceApplyFilter(Year: Integer; Month: Integer; LogCode: Text)Result: Text
         var
         LogRec: Record "NDC-SalesInvoicesPostLog";
         JsonArray: JsonArray;
         JsonObject: JsonObject;
-        StartDateTime, EndDateTime : DateTime;
-        RealMessage: Text;
         begin
             Clear(jsonArray);
             Clear(jsonObject);
             LogRec.SetRange("Post Status", LogRec."Post Status"::Fail);
             FilterDate(LogRec, YearFilter, MonthFilter);
-            if Keyword.Contains('Lot') then
-                RealMessage := 'Lot';
-            if Keyword.Contains('available') then
-                RealMessage := 'location';
-            if Keyword.Contains('Required') then
-                RealMessage := 'required';
-            if Keyword.Contains('quantity') then
-                RealMessage := 'Quantity';
-            if Keyword.Contains('Not') then
-                RealMessage := 'Not';
+            LogRec.SetRange("Log Code", LogCode);
             if LogRec.FindSet() then begin
                 repeat
-                    if LogRec."Error Message".Contains(RealMessage) then begin
-                        Clear(JsonObject);
-                        JsonObject.Add('invoiceNo', LogRec."Invoice No.");
-                        JsonObject.Add('retailName', LogRec."Location Name");
-                        JsonObject.Add('errorMessage', LogRec."Error Message");
-                        JsonArray.Add(JsonObject);
-                    end;
+                    Clear(JsonObject);
+                    JsonObject.Add('invoiceNo', LogRec."Invoice No.");
+                    JsonObject.Add('retailName', LogRec."Location Name");
+                    JsonObject.Add('errorMessage', LogRec."Error Message");
+                    JsonArray.Add(JsonObject);    
                 until LogRec.Next() = 0
             end;
             JsonArray.WriteTo(Result);

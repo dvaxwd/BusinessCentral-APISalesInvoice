@@ -137,6 +137,8 @@ page 90011 "NDC-SalesInvoicesPostLog"
                 PostStatusStyleText := 'Unfavorable';
             "NDC-PostStatus"::Success:
                 PostStatusStyleText := 'Favorable';
+            "NDC-PostStatus"::RemovedOrModified:
+                PostStatusStyleText := 'Promoted';
             else
                 PostStatusStyleText := '';
         end;
@@ -154,12 +156,12 @@ page 90011 "NDC-SalesInvoicesPostLog"
                 SaleH.SetRange("No.", Log."Invoice No.");
                 if SaleH.FindFirst() then begin
                     if SaleH."Sell-to Customer No." <> Log."Customer No." then begin
-                        Log."Post Status" := Enum::"NDC-PostStatus"::Success;
+                        Log."Post Status" := Enum::"NDC-PostStatus"::RemovedOrModified;
                         Log."Error Message" := 'Sales Invoice found but customer does not match. Possibly modified or posted.';
                         Log.Modify();
                     end;
                 end else begin
-                    Log."Post Status" := Enum::"NDC-PostStatus"::Success;
+                    Log."Post Status" := Enum::"NDC-PostStatus"::RemovedOrModified;
                     Log."Error Message" := 'Sales Invoice not found. Possibly posted or deleted.';
                     Log.Modify();
                 end;
