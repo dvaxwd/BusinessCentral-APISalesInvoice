@@ -17,6 +17,9 @@ page 90013 "NDC-LogCode"{
                 }field(Description; Rec.Description){
                     Caption = 'Description';
                     ApplicationArea = All;
+                }field(Type; Rec.Type){
+                    Caption = 'Log Code';
+                    ApplicationArea = All;
                 }
             }
         }

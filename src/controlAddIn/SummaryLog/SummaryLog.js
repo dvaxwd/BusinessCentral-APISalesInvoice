@@ -276,23 +276,25 @@ async function LoadFailReasonCard(targetElement, dataArray){
                 }
                 targetElement.innerHTML = ``;
                 data.forEach(item => {
-                    const button = document.createElement("button");
-                    button.className = "btn btn-outline-dark shadow position-relative mb-2";
-                    button.type = "button";
-                    button.textContent = item.reason;
-                    button.addEventListener("click", (e) => {
-                        Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnTopFailureClick', [item.reason], false)
-                        const target = document.getElementById("invoiceArea");
-                        if (target) {
-                            target.scrollIntoView({ behavior: "smooth" });
-                        }
-                    })
-                    const span = document.createElement("span");
-                    span.className = "position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger";
-                    span.textContent = item.count;
+                    if (item.count > 0) {
+                        const button = document.createElement("button");
+                        button.className = "btn btn-outline-dark shadow position-relative mb-2";
+                        button.type = "button";
+                        button.textContent = item.description;
+                        button.addEventListener("click", (e) => {
+                            Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('OnTopFailureClick', [item.code], false)
+                            const target = document.getElementById("invoiceArea");
+                            if (target) {
+                                target.scrollIntoView({ behavior: "smooth" });
+                            }
+                        })
+                        const span = document.createElement("span");
+                        span.className = "position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger";
+                        span.textContent = item.count;
 
-                    button.appendChild(span);
-                    targetElement.appendChild(button);
+                        button.appendChild(span);
+                        targetElement.appendChild(button); 
+                    }
                 });
             }
         }
@@ -305,7 +307,8 @@ async function LoadFailReasonCardApplyfilter(dataArray){
         const target = document.getElementById("failCardArea");
         const data = JSON.parse(dataArray);
         if(Array.isArray(data)){
-            if(data.length > 0){
+            const ishavefail = data.some(item => item.count > 0);
+            if(ishavefail){
                 LoadFailReasonCard(target, dataArray);
             }else{
                 LoadEmptyFailReasonCard(target);
@@ -571,7 +574,11 @@ function FormatDateFormular(lastUpdate) {
 }
 function ScrolBack(){
     const target = document.getElementById("filterArea");
+    const yearDropdown = document.getElementById("yearDropdown");
+    const monthDropdown = document.getElementById("monthDropdown");
     if (target) {
+        yearDropdown.textContent = "Years";
+        monthDropdown.textContent = "Months";
         target.scrollIntoView({ behavior: "smooth" });
         Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('ClearFilter',[0, 0],false)                   
     }
