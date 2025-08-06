@@ -3,6 +3,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
     var
         LotRealTimeBalance: Dictionary of [code[50], Decimal];
         FailPostDict: Dictionary of [Code[20], List of [Text[250]]];
+        LogCodeDict: Dictionary of [Code[20], Code[10]];
 
     procedure ProcessToCreateInv(TransectionRec: Record "NDC-Transaction DateTime")
     var
@@ -29,6 +30,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         ItemRequireLot: Record "Item";
     begin
         Clear(FailPostDict);
+        Clear(LogCodeDict);
         CusBillRec.Reset();
         CusBillRec.setrange("Transaction ID", TransectionRec."Transaction ID");
         if CusBillRec.FindSet() then begin
@@ -301,12 +303,14 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                     StrSubstNo(
                         'Lot assignment incomplete: Required = %1, Assigned = %2, Item = %3',
                         SaleInL."Quantity (Base)", SaleInL."Quantity (Base)" - QtyToAssign, SaleInL."No."));
+                LogCodeDictManagement(SaleInL."Document No.", 'FL-001');
             end;
         end else begin
             FailPostDictManagement(SaleInL."Document No.",
                 StrSubstNo(
                     'No available lot found in location: Item=%1, Location=%2',
                     SaleInL."No.", SaleInL."Location Code"));
+            LogCodeDictManagement(SaleInL."Document No.", 'FL-002');
         end;
     end;
 
@@ -320,12 +324,14 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             FailPostDictManagement(SaleInL."Document No.",
                 StrSubstNo('required serial no. for item : item=%1',
                 SaleInL."No."));
+            LogCodeDictManagement(SaleInL."Document No.", 'FS-001');
             exit;
         end else begin
             if SaleInL."Quantity (Base)" <> 1 then begin
                 FailPostDictManagement(SaleInL."Document No.",
                         StrSubstNo('Quantity must be 1 for serial-controlled item: Item = %1, Quantity = %2',
                             SaleInL."No.", SaleInL."Quantity (Base)"));
+                LogCodeDictManagement(SaleInL."Document No.", 'FS-002');
                 exit;
             end else begin
                 if TranferItem(SaleInL, 'WHLGST', SerialNo, OutPositiveILE) then begin
@@ -341,6 +347,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
                     FailPostDictManagement(SaleInL."Document No.",
                         StrSubstNo('Not found Serial:%1 for item %2',
                             SerialNo, SaleInL."No."));
+                    LogCodeDictManagement(SaleInL."Document No.", 'FS-003');
                 end;
             end;
         end;
@@ -523,6 +530,17 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
         end;
     end;
 
+    // ***** This procedure adds or updates an entry in the LogCodeDict. *****
+    local procedure LogCodeDictManagement(DictKey: Code[20]; Value: Code[10])
+    begin
+        if not LogCodeDict.ContainsKey(DictKey) then begin
+            LogCodeDict.Add(DictKey, Value);
+        end else begin
+            LogCodeDict.Set(DictKey, Value);
+        end;
+
+    end;
+
     // ***** Thsi procedure is used to add or update an entry in LotRealTimeBalance *****
     local procedure LotRealTimeBalanceManagement(LotDictKey: code[50]; Quantity: Decimal)
     begin
@@ -558,7 +576,7 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
     end;
 
     // ***** This procedure is used to log the result of posting a sales invoice. *****
-    local procedure Log(SaleH: Record "Sales Header"; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; SIDate: DateTime)
+    local procedure Log(SaleH: Record "Sales Header"; SIStatus: Enum "NDC-PostStatus"; SIErrMes: Text[250]; LogCode: Code[10]; SIDate: DateTime)
     var
         SIPLog: Record "NDC-SalesInvoicesPostLog";
         Location: Record "Location";
@@ -575,10 +593,12 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             SIPLog."Location Name" := Location.Name;
         end;
 
+        SIPLog.Amount := SaleH."Amount Including VAT";
         SIPLog."Post Status" := SIStatus;
         SIPLog."Error Message" := SIErrMes;
         SIPLog."Post Attempt DateTime" := SIDate;
         SIPLog."Transaction ID" := SaleH."NDC-Ref. Guid";
+        SIPLog."Log Code" := LogCode;
         SIPLog.Insert();
     end;
 
@@ -593,11 +613,15 @@ codeunit 90000 "NDC-GenerateInvoiceAPI"
             DictValue := FailPostDict.Get(SaleH."No.");
             ErrMessage := '';
             foreach Value in DictValue do begin
-                ErrMessage := Format(ErrMessage + '- ' + Value + '\');
+                ErrMessage := Format(ErrMessage + '- ' + Value + '|');
             end;
-            Log(SaleH, Enum::"NDC-PostStatus"::Fail, ErrMessage, CurrentDateTime);
+            if LogCodeDict.ContainsKey(SaleH."No.") then begin
+                Log(SaleH, Enum::"NDC-PostStatus"::Fail, ErrMessage, LogCodeDict.Get(SaleH."No."), CurrentDateTime);
+            end else begin
+                Log(SaleH, Enum::"NDC-PostStatus"::Fail, ErrMessage, '', CurrentDateTime);
+            end;
         end else begin
-            Log(SaleH, Enum::"NDC-PostStatus"::Success, 'Posted without errors', CurrentDateTime);
+            Log(SaleH, Enum::"NDC-PostStatus"::Success, 'Posted without errors', 'S-001', CurrentDateTime);
         end;
     end;
 }
