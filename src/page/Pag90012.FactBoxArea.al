@@ -14,6 +14,7 @@ page 90012 "NDC-FactBoxArea"
                 trigger ControlReady()
                     begin
                         CurrPage.SummaryLog.LoadDashboard(PrepareDataCount(YearFilter, MonthFilter), SummaryCountFailReason(YearFilter, MonthFilter), CalLastUpdate());
+                        CurrPage.SummaryLog.LoadLineChart(PrepareDataLineChart(YearFilter));
                         CurrPage.SummaryLog.LoadMap(PrepareDataMap());
                         CurrPage.SummaryLog.LoadInvoiceTable(PrepareDataFailInvoice(YearFilter, MonthFilter));
                     end;
@@ -366,4 +367,60 @@ page 90012 "NDC-FactBoxArea"
                 end;
             end;
         end;
+
+    local procedure PrepareDataLineChart(Year: Integer)Result: Text
+    var
+        LogData: Record "NDC-SalesInvoicesPostLog";
+        CPMDict: Dictionary of [Integer, List of [Integer]];
+        ListOfCount: List of [Integer];
+        ShortMonth: array[12] of Text[3];
+        JsonObject: JsonObject;
+        JsonArray: JsonArray;
+        i, j, DictKey, MonthOfLoc: Integer;
+    begin
+        Clear(CPMDict);
+        for i := 1 to 12 do begin
+            Clear(ListOfCount);
+            for j := 1 to 3 do begin
+                ListOfCount.Add(0);
+            end;
+            CPMDict.Add(i, ListOfCount);
+        end;
+
+        Clear(LogData);
+        FilterDate(LogData, Year, 0);
+        if LogData.FindSet() then begin
+            repeat
+                MonthOfLoc := Date2DMY(DT2Date(LogData."Post Attempt DateTime"), 2);
+                if MonthOfLoc <> 7 then continue;
+                if LogData."Post Status" = LogData."Post Status"::Fail then begin
+                    Clear(ListOfCount);
+                    ListOfCount := CPMDict.Get(MonthOfLoc);
+                    ListOfCount.Set(1, ListOfCount.Get(1) + 1);
+                    ListOfCount.Set(3, ListOfCount.Get(3) + 1);
+                    CPMDict.Set(MonthOfLoc, ListOfCount);
+                end else begin
+                    Clear(ListOfCount);
+                    ListOfCount := CPMDict.Get(MonthOfLoc);
+                    ListOfCount.Set(1, ListOfCount.Get(1) + 1);
+                    ListOfCount.Set(2, ListOfCount.Get(2) + 1);
+                    CPMDict.Set(MonthOfLoc, ListOfCount);
+                end;
+
+            until LogData.Next() = 0;
+        end;
+
+        Clear(JsonArray);
+        foreach DictKey in CPMDict.Keys do begin
+            Clear(JsonObject);
+            Clear(ListOfCount);
+            ListOfCount := CPMDict.Get(DictKey);
+            JsonObject.Add('month', DictKey);
+            JsonObject.Add('totalInvoice', ListOfCount.Get(1));
+            JsonObject.Add('successInvoice', ListOfCount.Get(2));
+            JsonObject.Add('failInvoice', ListOfCount.Get(3));
+            JsonArray.Add(JsonObject);
+        end;
+            JsonArray.WriteTo(Result);
+    end;
 }

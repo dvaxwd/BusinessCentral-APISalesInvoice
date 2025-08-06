@@ -18,6 +18,7 @@ async function LoadDashboard(dataArray, failReasonArray, lastUpdate){
                 </div>
             </div>
         </div>
+        <div class="row d-flex justify-content-center px-2" id="linechartArea"></div>
         <div class="row m-2 p-2 rounded shadow" id="mapArea" style="height: 480px;"></div>
         <div class="row d-flex mt-4 mb-4 align-items-center" id="invoiceArea">
             <div class="col-auto ms-2">
@@ -255,7 +256,6 @@ async function LoadPieChartApplyFilter(dataArray){
             if((obj['successInvoice'] === 0) && (obj['failInvoice'] === 0)){
                 createNotFoundFilterElement(chartArea);
             }else{
-                console.log('found : ', obj)
                 LoadPieChart(chartArea,dataArray);
             }
         }
@@ -331,6 +331,54 @@ async function LoadEmptyFailReasonCard(targetElement){
         button.appendChild(span);
         targetElement.appendChild(button);
     }
+}
+
+// ***** This group of function is used to control line chart *****
+async function LoadLineChart(dataArray){
+    const targetElement = document.getElementById("linechartArea");
+    console.log('data array :',dataArray);
+    const canvas = document.createElement("canvas");
+    canvas.className = "p-3";
+    canvas.id = "lineChartCanvas";
+    canvas.style.maxWidth = "100%";
+    canvas.style.maxHeight = "200px";
+    targetElement.innerHTML = '';
+    targetElement.appendChild(canvas);
+
+    const ctx = canvas.getContext("2d");
+    new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: ['Jan.','Feb.','Mar.','Apr.','May.','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
+            datasets: [
+                {
+                    label: 'Total Invoice',
+                    data: [65, 59, 80, 81, 56, 55, 40, 59, 80, 81, 56, 55],
+                    fill: false,
+                    borderColor: 'rgb(13, 110, 253)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Success Invoice',
+                    data: [57, 23, 88, 14, 76, 3, 45, 67, 90, 31, 12, 59],
+                    fill: false,
+                    borderColor: 'rgb(25, 135, 84)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Fail Invoice',
+                    data: [64, 11, 38, 97, 22, 85, 49, 6, 73, 18, 91, 33],
+                    fill: false,
+                    borderColor: 'rgb(220, 53, 69)',
+                    tension: 0.1
+                }
+            ]
+        }
+
+    })
+}
+async function name(params) {
+    
 }
 
 // ***** This group of functions is used to control the map *****
