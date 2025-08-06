@@ -49,6 +49,12 @@ table 90007 "NDC-SalesInvoicesPostLog"
             Caption = 'Transaction ID';
         }field(12; "Log Code"; Code[10]){
             caption = 'Log Code';
+            trigger Onvalidate()
+                var
+                    LogCode: Record "NDC-LogCode";
+                begin
+
+                end;
         }
     }
     keys
