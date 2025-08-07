@@ -338,47 +338,48 @@ async function LoadLineChart(dataArray){
     try{
         const data = JSON.parse(dataArray);
         const targetElement = document.getElementById("linechartArea");
-        const canvas = document.createElement("canvas");
-        canvas.className = "p-3";
-        canvas.id = "lineChartCanvas";
-        canvas.style.maxWidth = "100%";
-        canvas.style.maxHeight = "200px";
         targetElement.innerHTML = '';
-        targetElement.appendChild(canvas);
-        console.log(data)
-        const ctx = canvas.getContext("2d");
-        new Chart(ctx, {
-            type: "line",
-            data: {
-                labels: ['Jan.','Feb.','Mar.','Apr.','May.','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
-                datasets: [
-                    {
-                        label: 'Total Invoice',
-                        data: data.map(item => item.totalInvoice),
-                        fill: false,
-                        backgroundColor: 'rgb(13, 110, 253)',
-                        borderColor: 'rgb(13,110,253)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Success Invoice',
-                        data: data.map(item => item.successInvoice),
-                        fill: false,
-                        backgroundColor: 'rgb(25, 135, 84)',
-                        borderColor: 'rgb(25, 135, 84)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Fail Invoice',
-                        data: data.map(item => item.failInvoice),
-                        fill: false,
-                        backgroundColor: 'rgb(220, 53, 69)',
-                        borderColor: 'rgb(220, 53, 69)',
-                        tension: 0.1
-                    }
-                ]
-            }
-        })
+        if(true){
+            const canvas = document.createElement("canvas");
+            canvas.className = "p-3";
+            canvas.id = "lineChartCanvas";
+            canvas.style.maxWidth = "100%";
+            canvas.style.maxHeight = "200px";
+            targetElement.appendChild(canvas);
+            const ctx = canvas.getContext("2d");
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: ['Jan.','Feb.','Mar.','Apr.','May.','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
+                    datasets: [
+                        {
+                            label: 'Total Invoice',
+                            data: data.map(item => item.totalInvoice),
+                            fill: false,
+                            backgroundColor: 'rgb(13, 110, 253)',
+                            borderColor: 'rgb(13,110,253)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Success Invoice',
+                            data: data.map(item => item.successInvoice),
+                            fill: false,
+                            backgroundColor: 'rgb(25, 135, 84)',
+                            borderColor: 'rgb(25, 135, 84)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Fail Invoice',
+                            data: data.map(item => item.failInvoice),
+                            fill: false,
+                            backgroundColor: 'rgb(220, 53, 69)',
+                            borderColor: 'rgb(220, 53, 69)',
+                            tension: 0.1
+                        }
+                    ]
+                }
+            })
+         }
     }catch(error){
         console.log(error)
     }
