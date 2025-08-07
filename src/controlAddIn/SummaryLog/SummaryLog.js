@@ -335,50 +335,53 @@ async function LoadEmptyFailReasonCard(targetElement){
 
 // ***** This group of function is used to control line chart *****
 async function LoadLineChart(dataArray){
-    const targetElement = document.getElementById("linechartArea");
-    console.log('data array :',dataArray);
-    const canvas = document.createElement("canvas");
-    canvas.className = "p-3";
-    canvas.id = "lineChartCanvas";
-    canvas.style.maxWidth = "100%";
-    canvas.style.maxHeight = "200px";
-    targetElement.innerHTML = '';
-    targetElement.appendChild(canvas);
+    try{
+        const data = JSON.parse(dataArray);
+        const targetElement = document.getElementById("linechartArea");
+        const canvas = document.createElement("canvas");
+        canvas.className = "p-3";
+        canvas.id = "lineChartCanvas";
+        canvas.style.maxWidth = "100%";
+        canvas.style.maxHeight = "200px";
+        targetElement.innerHTML = '';
+        targetElement.appendChild(canvas);
 
-    const ctx = canvas.getContext("2d");
-    new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: ['Jan.','Feb.','Mar.','Apr.','May.','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
-            datasets: [
-                {
-                    label: 'Total Invoice',
-                    data: [65, 59, 80, 81, 56, 55, 40, 59, 80, 81, 56, 55],
-                    fill: false,
-                    borderColor: 'rgb(13, 110, 253)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Success Invoice',
-                    data: [57, 23, 88, 14, 76, 3, 45, 67, 90, 31, 12, 59],
-                    fill: false,
-                    borderColor: 'rgb(25, 135, 84)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Fail Invoice',
-                    data: [64, 11, 38, 97, 22, 85, 49, 6, 73, 18, 91, 33],
-                    fill: false,
-                    borderColor: 'rgb(220, 53, 69)',
-                    tension: 0.1
-                }
-            ]
-        }
-
-    })
-}
-async function name(params) {
-    
+        const ctx = canvas.getContext("2d");
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: ['Jan.','Feb.','Mar.','Apr.','May.','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
+                datasets: [
+                    {
+                        label: 'Total Invoice',
+                        data: data.map(item => item.totalInvoice),
+                        fill: false,
+                        backgroundColor: 'rgb(13, 110, 253)',
+                        borderColor: 'rgb(13,110,253)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Success Invoice',
+                        data: data.map(item => item.successInvoice),
+                        fill: false,
+                        backgroundColor: 'rgb(25, 135, 84)',
+                        borderColor: 'rgb(25, 135, 84)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Fail Invoice',
+                        data: data.map(item => item.failInvoice),
+                        fill: false,
+                        backgroundColor: 'rgb(220, 53, 69)',
+                        borderColor: 'rgb(220, 53, 69)',
+                        tension: 0.1
+                    }
+                ]
+            }
+        })
+    }catch(error){
+        console.log(error)
+    }
 }
 
 // ***** This group of functions is used to control the map *****
