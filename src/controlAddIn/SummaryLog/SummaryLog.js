@@ -345,7 +345,7 @@ async function LoadLineChart(dataArray){
         canvas.style.maxHeight = "200px";
         targetElement.innerHTML = '';
         targetElement.appendChild(canvas);
-
+        console.log(data)
         const ctx = canvas.getContext("2d");
         new Chart(ctx, {
             type: "line",

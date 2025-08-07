@@ -24,6 +24,7 @@ page 90012 "NDC-FactBoxArea"
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                         CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                         CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadLineChart(PrepareDataLineChart(YearFilter));
                         CurrPage.SummaryLog.LoadMapApplyFilter(PrepareDataMap());
                         CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                     end;
@@ -43,6 +44,7 @@ page 90012 "NDC-FactBoxArea"
                         CurrPage.SummaryLog.LoadSummaryApplyFilter(PrepareDataCount(YearFilter, MonthFilter), CalLastUpdate());
                         CurrPage.SummaryLog.LoadPieChartApplyFilter(PrepareDataCount(YearFilter, MonthFilter));
                         CurrPage.SummaryLog.LoadFailReasonCardApplyfilter(SummaryCountFailReason(YearFilter, MonthFilter));
+                        CurrPage.SummaryLog.LoadLineChart(PrepareDataLineChart(YearFilter));
                         CurrPage.SummaryLog.LoadMapApplyFilter(PrepareDataMap());
                         CurrPage.SummaryLog.LoadInvoiceTableApplyFilter(PrepareDataFailInvoice(YearFilter, MonthFilter));
                     end;
@@ -421,6 +423,6 @@ page 90012 "NDC-FactBoxArea"
             JsonObject.Add('failInvoice', ListOfCount.Get(3));
             JsonArray.Add(JsonObject);
         end;
-            JsonArray.WriteTo(Result);
+        JsonArray.WriteTo(Result);
     end;
 }
