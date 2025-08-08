@@ -18,6 +18,7 @@ async function LoadDashboard(dataArray, failReasonArray, lastUpdate){
                 </div>
             </div>
         </div>
+        <div class="row d-flex justify-content-center px-2" id="linechartArea"></div>
         <div class="row m-2 p-2 rounded shadow" id="mapArea" style="height: 480px;"></div>
         <div class="row d-flex mt-4 mb-4 align-items-center" id="invoiceArea">
             <div class="col-auto ms-2">
@@ -30,7 +31,7 @@ async function LoadDashboard(dataArray, failReasonArray, lastUpdate){
             </div>
         </div>
         <div class="row d-flex justify-content-center mx-1 mb-2 h-auto" >
-            <div class="col-11 px-0 py-0 rounded shadow overflow-y-auto" id="invoiceTableArea" style="height: 360px;"></div>
+            <div class="col-11 px-0 py-0 rounded shadow overflow-y-auto overflow-x-hidden" id="invoiceTableArea" style="height: 360px;"></div>
         </div>
         <div class="row d-flex justify-content-end px-5 pt-5 pb-0 h-100" id="footer">
             <div class="col-auto px-0 py-0 align-items-end">
@@ -49,6 +50,7 @@ async function LoadDashboard(dataArray, failReasonArray, lastUpdate){
     await LoadSummaryCard(cardArea, dataArray, FormatDateFormular(lastUpdate));
     await LoadPieChart(chartArea, dataArray);
     await LoadFailReasonCard(failCardArea, failReasonArray);
+    CustomeScrollBar();
 }
 
 // ***** This group of functions controls the dropdown filter *****
@@ -255,7 +257,6 @@ async function LoadPieChartApplyFilter(dataArray){
             if((obj['successInvoice'] === 0) && (obj['failInvoice'] === 0)){
                 createNotFoundFilterElement(chartArea);
             }else{
-                console.log('found : ', obj)
                 LoadPieChart(chartArea,dataArray);
             }
         }
@@ -333,6 +334,58 @@ async function LoadEmptyFailReasonCard(targetElement){
     }
 }
 
+// ***** This group of function is used to control line chart *****
+async function LoadLineChart(dataArray){
+    try{
+        const data = JSON.parse(dataArray);
+        const targetElement = document.getElementById("linechartArea");
+        targetElement.innerHTML = '';
+        if(true){
+            const canvas = document.createElement("canvas");
+            canvas.className = "p-3";
+            canvas.id = "lineChartCanvas";
+            canvas.style.maxWidth = "100%";
+            canvas.style.maxHeight = "200px";
+            targetElement.appendChild(canvas);
+            const ctx = canvas.getContext("2d");
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: ['Jan.','Feb.','Mar.','Apr.','May.','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
+                    datasets: [
+                        {
+                            label: 'Total Invoice',
+                            data: data.map(item => item.totalInvoice),
+                            fill: false,
+                            backgroundColor: 'rgb(13, 110, 253)',
+                            borderColor: 'rgb(13,110,253)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Success Invoice',
+                            data: data.map(item => item.successInvoice),
+                            fill: false,
+                            backgroundColor: 'rgb(25, 135, 84)',
+                            borderColor: 'rgb(25, 135, 84)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Fail Invoice',
+                            data: data.map(item => item.failInvoice),
+                            fill: false,
+                            backgroundColor: 'rgb(220, 53, 69)',
+                            borderColor: 'rgb(220, 53, 69)',
+                            tension: 0.1
+                        }
+                    ]
+                }
+            })
+         }
+    }catch(error){
+        console.log(error)
+    }
+}
+
 // ***** This group of functions is used to control the map *****
 async function LoadMap(dataArray){
     const data = JSON.parse(dataArray);
@@ -407,6 +460,7 @@ async function LoadInvoiceTable(dataArray){
                 const acdButton = document.createElement("button");
                 acdButton.className = "accordion-button";
                 acdButton.type = "button";
+                acdButton.style.backgroundColor = "transparent";
                 acdButton.setAttribute("data-bs-toggle","collapse");
                 acdButton.setAttribute("data-bs-target",`#collapse-${item.invoiceNo}`);
                 acdButton.setAttribute("aria-expanded","true");
@@ -587,5 +641,24 @@ function ScrolBack(){
         target.scrollIntoView({ behavior: "smooth" });
         Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('ClearFilter',[0, 0],false)                   
     }
+}
+function CustomeScrollBar(){
+    const style = document.createElement('style');
+    style.innerHTML = `
+        ::-webkit-scrollbar {
+            width: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        `;
+    document.head.appendChild(style);
 }
 

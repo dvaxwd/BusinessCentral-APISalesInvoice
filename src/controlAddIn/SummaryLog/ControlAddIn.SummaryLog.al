@@ -1,5 +1,5 @@
 controladdin "NDC-SummaryLog"{
-    RequestedHeight = 1520;
+    RequestedHeight = 1720;
     RequestedWidth = 300;
     VerticalStretch = true;
     HorizontalStretch = true;
@@ -24,6 +24,7 @@ controladdin "NDC-SummaryLog"{
     procedure LoadSummaryApplyFilter(ResultArray: Text; lastUpdated: Text)
     procedure LoadPieChartApplyFilter(ResultArray: Text)
     procedure LoadFailReasonCardApplyfilter(ResultArray: Text)
+    procedure LoadLineChart(ResultArray: Text)
     procedure LoadMap(ResultArray: Text)
     procedure LoadMapApplyFilter(ResultArray: Text)
     procedure LoadInvoiceTable(ResultArray: Text)
