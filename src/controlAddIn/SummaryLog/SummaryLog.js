@@ -31,7 +31,7 @@ async function LoadDashboard(dataArray, failReasonArray, lastUpdate){
             </div>
         </div>
         <div class="row d-flex justify-content-center mx-1 mb-2 h-auto" >
-            <div class="col-11 px-0 py-0 rounded shadow overflow-y-auto overflow-x-hidden" id="invoiceTableArea" style="height: 360px;"></div>
+            <div class="col-11 px-0 py-0 border border-1 rounded shadow overflow-y-auto overflow-x-hidden" id="invoiceTableArea" style="height: 360px;"></div>
         </div>
         <div class="row d-flex justify-content-end px-5 pt-5 pb-0 h-100" id="footer">
             <div class="col-auto px-0 py-0 align-items-end">
@@ -647,9 +647,6 @@ function CustomeScrollBar(){
     style.innerHTML = `
         ::-webkit-scrollbar {
             width: 7px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
         }
         ::-webkit-scrollbar-thumb {
             background: #888;
