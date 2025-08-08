@@ -460,6 +460,7 @@ async function LoadInvoiceTable(dataArray){
                 const acdButton = document.createElement("button");
                 acdButton.className = "accordion-button";
                 acdButton.type = "button";
+                acdButton.style.backgroundColor = "transparent";
                 acdButton.setAttribute("data-bs-toggle","collapse");
                 acdButton.setAttribute("data-bs-target",`#collapse-${item.invoiceNo}`);
                 acdButton.setAttribute("aria-expanded","true");
